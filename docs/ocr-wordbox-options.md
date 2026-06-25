@@ -35,16 +35,20 @@ PyPI latest checks on 2026-06-25:
 | `rapidocr` | 3.9.0 | locked; available through `--ocr-backend rapidocr` |
 | `easyocr` | 1.7.2 | queued |
 | `surya-ocr` | 0.20.0 | tested via `uvx`; review adapter ready for `results.json`; engine install stays external |
-| `chandra-ocr` | 0.2.0 | tested via `uvx`; review adapter ready for saved chunk JSON; engine install stays external |
+| `chandra-ocr` | 0.2.0 | tested via `uvx`; archived after local fixture tests because boxes were coarse chunks instead of line/word placement |
 | `python-doctr` | 1.0.1 | queued |
 
 `uv 0.11.24` reports itself current by `uv self update --dry-run`.
 
 ## Ranked Local Candidates
 
-1. PaddleOCR / PaddleX PP-OCR
+1. RapidOCR 3.9.0
 
-   Best current local baseline for searchable PDF geometry. The integration already calls `PaddleOCR.predict(..., return_word_box=True)` and stores line/word boxes in JSONL. PP-OCRv6 is the current default OCR family, but for Persian/Farsi use the Arabic-script PP-OCRv5 recognizer explicitly.
+   Default local searchable-PDF locator. It is local, ONNX Runtime works on CPU, and it exposes `return_word_box=True`. The repo backend uses `LangRec.ARABIC` and PP-OCRv5 Arabic mobile recognition for Arabic-script languages. On the DLI Persian page 7 and FSI Persian page 39 fixtures, RapidOCR was faster and produced more granular word-level placement.
+
+2. PaddleOCR / PaddleX PP-OCR
+
+   Fallback local searchable-PDF locator. The integration already calls `PaddleOCR.predict(..., return_word_box=True)` and stores line/word boxes in JSONL. PP-OCRv6 is the current default OCR family, but for Persian/Farsi use the Arabic-script PP-OCRv5 recognizer explicitly. It is slower on the checked fixtures, but it remains defensible because the OCRmyPDF path is conservative and the Arabic-script line-text fix produced correct-direction text on the DLI page 7 failure cases.
 
    Current Persian recipe:
 
@@ -53,13 +57,9 @@ PyPI latest checks on 2026-06-25:
    - Engine: `onnxruntime`
    - Device: `cpu`
 
-2. RapidOCR 3.9.0
-
-   Second local A/B backend. It is local, ONNX Runtime works on CPU, and it exposes `return_word_box=True`. The repo backend uses `LangRec.ARABIC` and PP-OCRv5 Arabic mobile recognition for Arabic-script languages. On the DLI Persian page 7 fixture, RapidOCR gives tighter word placement in several Persian entries, but recognition quality varies against Paddle.
-
 3. dots.ocr / dots.mocr
 
-   Useful for document layout and content extraction on GPU, but its public local path is block/layout JSON rather than a proven word-level text-layer engine. Keep it as a layout/content sidecar unless word coordinates are confirmed locally.
+   Useful for document layout and content extraction on GPU, but its public local path is block/layout JSON rather than a proven word-level text-layer engine. Archived for this repo's current pipeline.
 
 4. Surya 0.20.0
 
@@ -67,7 +67,7 @@ PyPI latest checks on 2026-06-25:
 
 5. Chandra OCR 2 / `chandra-ocr 0.2.0`
 
-   Strong local document OCR/content benchmark candidate, including Arabic-script benchmark coverage. The official CLI writes Markdown, HTML, and metadata; the repo has `review-chandra` for saved chunk JSON from the Python API. Local runs on the FSI and DLI fixtures produced useful table/section layout blocks, but the boxes are coarse document chunks rather than line or word placement.
+   Strong local document OCR/content benchmark candidate, including Arabic-script benchmark coverage. The official CLI writes Markdown, HTML, and metadata. Local runs on the FSI and DLI fixtures produced useful table/section layout blocks, but the boxes are coarse document chunks rather than line or word placement. It is archived in docs/history and removed from active code.
 
 6. EasyOCR 1.7.2
 
@@ -237,7 +237,7 @@ Output files:
 
 Surya's visible boxes aligned well with the page image and its text was more coherent than the Paddle/RapidOCR recognition on this FSI page. It emits line/block boxes, while RapidOCR remains the stronger current locator for word-level hidden text placement.
 
-Chandra command:
+Historical Chandra command, run before Chandra code was removed from the active repo:
 
 ```bash
 uvx --from chandra-ocr==0.2.0 chandra \
@@ -261,7 +261,7 @@ Saved parsed chunk JSON:
 
 Chunk result: `error=false`, `token_count=686`, `chunks=6`.
 
-Review command:
+Historical review command, run before `review-chandra` was removed from the active repo:
 
 ```bash
 uv run paddle-searchable-pdf review-chandra \
@@ -278,31 +278,15 @@ Output files:
 - `runs/fsi-persian/spoken-persian/chandra-ocr-page39/Spoken Persian.chandra.bboxes.pdf`
 - `runs/fsi-persian/spoken-persian/chandra-ocr-page39/previews/Spoken Persian.chandra.bboxes-0039.png`
 
-Chandra produced a more structured table-like Markdown/HTML representation than Paddle/RapidOCR, but the body text was one large table block in geometry. Use it as a structure sidecar alongside RapidOCR/Paddle word boxes.
+Chandra produced a more structured table-like Markdown/HTML representation than Paddle/RapidOCR, but the body text was one large table block in geometry. That made it unsuitable for the active word-box or retained sidecar path.
 
 ## Current Conclusion
 
-Use PaddleOCR as the production local searchable-PDF locator for now. With the Arabic-script line-text fix, it emits correct-direction Persian text for the tested DLI page 7 failure cases, and runtime stayed within the earlier baseline.
+Use RapidOCR as the default local searchable-PDF locator. It is faster on all checked fixtures and gives more granular word boxes in the Persian-script FSI page 39 and DLI page 7 tests.
 
-RapidOCR is now integrated as a second local A/B engine. It is faster on both checked fixtures and gives more granular word boxes in places, but its Persian recognition differs from Paddle on the DLI fixture.
+Keep PaddleOCR as a fallback backend. With the Arabic-script line-text fix, it emits correct-direction Persian text for the tested DLI page 7 failure cases, but it is slower and often less granular than RapidOCR in the checked fixtures.
 
-For FSI Persian-script page 39 specifically, Surya and Chandra are useful local content/layout sidecars, while RapidOCR gives the most useful word-level locator boxes. The practical next pipeline is to keep RapidOCR/Paddle geometry for the PDF text layer, then reconcile text against Surya, Chandra, or another high-quality content sidecar without moving the boxes.
-
-The main pipeline can include Chandra as an optional sidecar when a Chandra vLLM server is already running:
-
-```bash
-uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf pipeline input.pdf runs/input \
-  --ocr-backend rapidocr \
-  --language fas \
-  --engine onnxruntime \
-  --force-ocr \
-  --review-bboxes \
-  --preview-page 39 \
-  --chandra-sidecar \
-  --chandra-vllm-api-base http://127.0.0.1:8000/v1 \
-  --chandra-review-bboxes \
-  --chandra-preview-page 39
-```
+Keep Surya as the local layout/content sidecar. Chandra remains a documented experiment only: it produced good structure/content but coarse chunk geometry, so it is no longer active code.
 
 ## Visual Box Review
 
@@ -358,31 +342,6 @@ uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
   --labels \
   --preview-page 7
 ```
-
-Use `review-chandra` for saved Chandra chunk JSON from the Python API:
-
-```bash
-uv run paddle-searchable-pdf review-chandra input.pdf runs/chandra/page.chandra.json \
-  --out runs/chandra/page.chandra.bboxes.pdf \
-  --pages 7 \
-  --labels \
-  --preview-page 7
-```
-
-Use `chandra-ocr` to create that JSON shape directly from this repo:
-
-```bash
-uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf chandra-ocr input.pdf runs/chandra \
-  --pages 39 \
-  --method vllm \
-  --vllm-api-base http://127.0.0.1:8000/v1 \
-  --max-output-tokens 2048 \
-  --batch-size 1 \
-  --review-bboxes \
-  --preview-page 39
-```
-
-That runner writes `*.chandra.json`, `*.chandra.md`, `*.chandra.html`, `*.chandra_metadata.json`, and optional bbox review files under `runs/chandra/<input-stem>/`. The metadata file includes total tokens, chunk counts, chunk-label counts, generated artifact paths, and review-preview paths. `review-chandra` still draws orange layout chunk boxes from Chandra `chunks` and accepts the runner JSON.
 
 ## Surya DLI Page 7 Proof
 
@@ -448,7 +407,7 @@ Runtime:
 
 The first 4096-token server attempt loaded but the page image prompt failed with `Input length (4698) exceeds model's maximum context length (4096)`. The 8192-token server reached readiness. It reported a 9.86 GiB checkpoint, 8.61 GiB model-load memory, 0.98 GiB available KV cache, 22,341 KV tokens, and maximum concurrency `2.73x` for 8192-token requests.
 
-Chandra CLI command:
+Historical Chandra CLI command, run before Chandra code was removed from the active repo:
 
 ```bash
 uvx --from chandra-ocr==0.2.0 chandra \
@@ -472,7 +431,7 @@ Saved parsed chunk JSON:
 
 Chunk result: `error=false`, `token_count=556`, `chunks=8`.
 
-Review command:
+Historical review command, run before `review-chandra` was removed from the active repo:
 
 ```bash
 uv run paddle-searchable-pdf review-chandra \
@@ -495,9 +454,9 @@ Visual result: Chandra correctly grouped the page into section/text/list blocks.
 
 1. Run the patched Paddle path on the first 10 pages of additional language fixtures, especially Arabic-script and Latin-script PDFs, and compare extracted text plus bbox overlays.
 2. Run more recurring A/B fixtures through both `--ocr-backend paddle` and `--ocr-backend rapidocr`.
-3. Add a first reconciliation experiment that keeps RapidOCR word boxes and substitutes content from Surya/Chandra where the sidecar clearly improves recognition.
+3. Add a first reconciliation experiment that keeps RapidOCR word boxes and substitutes content from Surya or Mistral where the sidecar clearly improves recognition.
 4. Test a GPU Paddle container only after `paddlepaddle-gpu` supports this RTX 5070 stack cleanly and `paddle.utils.run_check()` passes.
-5. Keep dots.ocr, Surya, and Chandra as content/layout sidecars unless one proves reliable word-level PDF coordinates locally.
+5. Keep Chandra and dots.mocr archived unless a future local test proves reliable word-level PDF coordinates.
 
 ## Sources
 

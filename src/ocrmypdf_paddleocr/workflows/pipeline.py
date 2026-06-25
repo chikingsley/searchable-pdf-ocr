@@ -9,7 +9,6 @@ from typing import Literal
 
 from dotenv import dotenv_values
 
-from ocrmypdf_paddleocr.chandra_sidecar import ChandraMethod, ChandraOcrOptions, ChandraOcrResult, run_chandra_ocr
 from ocrmypdf_paddleocr.constants import DEFAULT_RECONCILE_MODEL, DEFAULT_SUPERWHISPER_URL
 from ocrmypdf_paddleocr.mistral_sidecar import run_mistral_ocr
 from ocrmypdf_paddleocr.rebuild import rebuild_pdf
@@ -39,7 +38,7 @@ class WordReviewResult:
 class PipelineOptions:
     input_pdf: Path
     out_dir: Path
-    ocr_backend: OcrBackendName = "paddle"
+    ocr_backend: OcrBackendName = "rapidocr"
     language: tuple[str, ...] = ("eng",)
     device: str = "cpu"
     ocr_version: str = "PP-OCRv6"
@@ -76,22 +75,6 @@ class PipelineOptions:
     final_pdf: Path | None = None
     final_suffix: str = "-OCR"
     font_file: Path | None = None
-    chandra_sidecar: bool = False
-    chandra_method: ChandraMethod = "vllm"
-    chandra_vllm_api_base: str | None = None
-    chandra_max_output_tokens: int | None = 2048
-    chandra_batch_size: int = 1
-    chandra_max_workers: int | None = None
-    chandra_max_retries: int | None = None
-    chandra_max_failure_retries: int | None = None
-    chandra_temperature: float = 0.0
-    chandra_top_p: float = 0.1
-    chandra_include_images: bool = False
-    chandra_include_headers_footers: bool = False
-    chandra_review_bboxes: bool = False
-    chandra_review_pages: str | None = None
-    chandra_labels: bool = False
-    chandra_preview_pages: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,7 +89,6 @@ class PipelineResult:
     word_review_word_count: int
     word_preview_files: tuple[Path, ...]
     mistral_markdown: Path
-    chandra_result: ChandraOcrResult | None
     corrected_words_jsonl: Path | None
     corrected_searchable_pdf: Path | None
     final_pdf: Path
@@ -136,13 +118,12 @@ class PipelineResult:
                     "pages": self.mistral_pages,
                     "markdown": os.fspath(self.mistral_markdown),
                 },
-                "chandra": chandra_manifest(self.chandra_result),
                 "reconcile": {
                     "status": self.reconcile_status,
                     "pages": self.reconcile_pages,
                     "corrections": self.corrections,
                     "words_jsonl": _optional_path(self.corrected_words_jsonl),
-                    "sidecars": sidecar_manifest_paths(self.mistral_markdown, self.chandra_result),
+                    "sidecars": [os.fspath(self.mistral_markdown)],
                 },
                 "rebuild": {
                     "status": "done" if self.corrected_searchable_pdf else "skipped",
@@ -216,7 +197,6 @@ def run_pipeline(options: PipelineOptions) -> PipelineResult:
         pages=options.pages,
         env_file=options.env_file.expanduser().resolve() if options.env_file else None,
     )
-    chandra_result = run_pipeline_chandra_sidecar(options, input_pdf=input_pdf, out_dir=out_dir)
 
     token = superwhisper_api_key(options.env_file)
     run_reconcile = should_reconcile(options.reconcile_mode, token)
@@ -228,8 +208,6 @@ def run_pipeline(options: PipelineOptions) -> PipelineResult:
         raise SystemExit("SUPERWHISPER_API_KEY is required for --reconcile.")
     if run_reconcile:
         sidecars = [mistral_result.combined_file]
-        if chandra_result:
-            sidecars.append(chandra_result.markdown_file)
         reconcile_pages, corrections = reconcile_words(
             words_jsonl=words_jsonl,
             sidecars=sidecars,
@@ -265,7 +243,6 @@ def run_pipeline(options: PipelineOptions) -> PipelineResult:
         word_review_word_count=word_review.word_count,
         word_preview_files=word_review.preview_files,
         mistral_markdown=mistral_result.combined_file,
-        chandra_result=chandra_result,
         corrected_words_jsonl=corrected_jsonl_for_result,
         corrected_searchable_pdf=corrected_pdf_for_result,
         final_pdf=final_pdf,
@@ -313,35 +290,6 @@ def run_pipeline_word_review(
     )
 
 
-def run_pipeline_chandra_sidecar(
-    options: PipelineOptions, *, input_pdf: Path, out_dir: Path
-) -> ChandraOcrResult | None:
-    if options.chandra_sidecar is False:
-        return None
-    return run_chandra_ocr(
-        ChandraOcrOptions(
-            input_pdf=input_pdf,
-            out_dir=out_dir / "sidecars" / "chandra",
-            pages=options.pages,
-            method=options.chandra_method,
-            vllm_api_base=options.chandra_vllm_api_base,
-            max_output_tokens=options.chandra_max_output_tokens,
-            batch_size=options.chandra_batch_size,
-            max_workers=options.chandra_max_workers,
-            max_retries=options.chandra_max_retries,
-            max_failure_retries=options.chandra_max_failure_retries,
-            temperature=options.chandra_temperature,
-            top_p=options.chandra_top_p,
-            include_images=options.chandra_include_images,
-            include_headers_footers=options.chandra_include_headers_footers,
-            review_bboxes=options.chandra_review_bboxes,
-            review_pages=options.chandra_review_pages,
-            review_labels=options.chandra_labels,
-            preview_pages=options.chandra_preview_pages,
-        )
-    )
-
-
 def superwhisper_api_key(env_file: Path | None = None) -> str | None:
     value = os.environ.get("SUPERWHISPER_API_KEY")
     if value and value.strip():
@@ -368,26 +316,6 @@ def _optional_path(path: Path | None) -> str | None:
     return os.fspath(path) if path else None
 
 
-def chandra_manifest(result: ChandraOcrResult | None) -> dict[str, object]:
-    if result is None:
-        return {"status": "skipped"}
-    return {
-        "status": "done",
-        "pages": result.page_count,
-        "tokens": result.total_token_count,
-        "chunks": result.total_chunk_count,
-        "chunk_labels": dict(result.chunk_labels),
-        "json": os.fspath(result.json_file),
-        "markdown": os.fspath(result.markdown_file),
-        "html": os.fspath(result.html_file),
-        "metadata": os.fspath(result.metadata_file),
-        "bboxes_pdf": _optional_path(result.bboxes_pdf),
-        "review_pages": result.review_page_count,
-        "review_boxes": result.review_box_count,
-        "previews": [os.fspath(path) for path in result.preview_files],
-    }
-
-
 def word_review_manifest(result: PipelineResult) -> dict[str, object]:
     if result.word_review_pdf is None:
         return {"status": "skipped"}
@@ -399,10 +327,3 @@ def word_review_manifest(result: PipelineResult) -> dict[str, object]:
         "words": result.word_review_word_count,
         "previews": [os.fspath(path) for path in result.word_preview_files],
     }
-
-
-def sidecar_manifest_paths(mistral_markdown: Path, chandra_result: ChandraOcrResult | None) -> list[str]:
-    sidecars = [os.fspath(mistral_markdown)]
-    if chandra_result:
-        sidecars.append(os.fspath(chandra_result.markdown_file))
-    return sidecars

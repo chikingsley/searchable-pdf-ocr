@@ -19,7 +19,7 @@ OcrBackendName = Literal["paddle", "rapidocr"]
 class SearchableOptions:
     input_pdf: Path
     output_pdf: Path
-    ocr_backend: OcrBackendName = "paddle"
+    ocr_backend: OcrBackendName = "rapidocr"
     language: tuple[str, ...] = ("eng",)
     device: str = DEFAULT_DEVICE
     ocr_version: str = DEFAULT_OCR_VERSION

@@ -4,9 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ocrmypdf_paddleocr.adapters.chandra import load_chandra_overlay_pages
 from ocrmypdf_paddleocr.adapters.surya import load_surya_overlay_pages
-from ocrmypdf_paddleocr.chandra_sidecar import ChandraOcrOptions, run_chandra_ocr
 from ocrmypdf_paddleocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, DEFAULT_RECONCILE_MODEL
 from ocrmypdf_paddleocr.mistral_sidecar import run_mistral_ocr
 from ocrmypdf_paddleocr.rebuild import rebuild_pdf
@@ -19,11 +17,9 @@ from ocrmypdf_paddleocr.workflows.searchable import SearchableOptions, run_searc
 COMMANDS = {
     "searchable",
     "mistral-ocr",
-    "chandra-ocr",
     "reconcile",
     "rebuild",
     "review-bboxes",
-    "review-chandra",
     "review-surya",
     "compare-backends",
     "pipeline",
@@ -35,11 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     add_searchable_command(subparsers)
     add_mistral_command(subparsers)
-    add_chandra_command(subparsers)
     add_reconcile_command(subparsers)
     add_rebuild_command(subparsers)
     add_review_bboxes_command(subparsers)
-    add_review_chandra_command(subparsers)
     add_review_surya_command(subparsers)
     add_compare_backends_command(subparsers)
     add_pipeline_command(subparsers)
@@ -48,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def add_searchable_arguments(parser: argparse.ArgumentParser, *, include_ocr_backend: bool = True) -> None:
     if include_ocr_backend:
-        parser.add_argument("--ocr-backend", choices=("paddle", "rapidocr"), default="paddle")
+        parser.add_argument("--ocr-backend", choices=("paddle", "rapidocr"), default="rapidocr")
     parser.add_argument("-l", "--language", action="append")
     parser.add_argument("--device", default=DEFAULT_DEVICE)
     parser.add_argument("--ocr-version", default=DEFAULT_OCR_VERSION)
@@ -90,30 +84,6 @@ def add_mistral_command(subparsers: argparse._SubParsersAction[argparse.Argument
     mistral.add_argument("--pages")
     mistral.add_argument("--env-file", type=Path)
     mistral.set_defaults(func=run_mistral)
-
-
-def add_chandra_command(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    chandra = subparsers.add_parser("chandra-ocr")
-    chandra.add_argument("input_pdf", type=Path)
-    chandra.add_argument("out_dir", type=Path)
-    chandra.add_argument("--pages")
-    chandra.add_argument("--method", choices=("vllm", "hf"), default="vllm")
-    chandra.add_argument("--vllm-api-base")
-    chandra.add_argument("--max-output-tokens", type=int, default=2048)
-    chandra.add_argument("--batch-size", type=int, default=1)
-    chandra.add_argument("--max-workers", type=int)
-    chandra.add_argument("--max-retries", type=int)
-    chandra.add_argument("--max-failure-retries", type=int)
-    chandra.add_argument("--temperature", type=float, default=0.0)
-    chandra.add_argument("--top-p", type=float, default=0.1)
-    chandra.add_argument("--include-images", action="store_true")
-    chandra.add_argument("--include-headers-footers", action="store_true")
-    chandra.add_argument("--review-bboxes", action="store_true")
-    chandra.add_argument("--review-out", type=Path)
-    chandra.add_argument("--review-pages")
-    chandra.add_argument("--labels", action="store_true")
-    chandra.add_argument("--preview-page", type=int, action="append")
-    chandra.set_defaults(func=run_chandra)
 
 
 def add_reconcile_command(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -161,18 +131,6 @@ def add_review_surya_command(subparsers: argparse._SubParsersAction[argparse.Arg
     review.add_argument("--labels", action="store_true")
     review.add_argument("--preview-page", type=int, action="append")
     review.set_defaults(func=run_review_surya)
-
-
-def add_review_chandra_command(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    review = subparsers.add_parser("review-chandra")
-    review.add_argument("input_pdf", type=Path)
-    review.add_argument("results_json", type=Path)
-    review.add_argument("--out", type=Path, required=True)
-    review.add_argument("--page-offset", type=int, default=0)
-    review.add_argument("--pages")
-    review.add_argument("--labels", action="store_true")
-    review.add_argument("--preview-page", type=int, action="append")
-    review.set_defaults(func=run_review_chandra)
 
 
 def add_compare_backends_command(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -231,22 +189,6 @@ def add_pipeline_command(subparsers: argparse._SubParsersAction[argparse.Argumen
     pipeline.add_argument("--review-pages")
     pipeline.add_argument("--review-labels", action="store_true")
     pipeline.add_argument("--preview-page", type=int, action="append")
-    pipeline.add_argument("--chandra-sidecar", action="store_true")
-    pipeline.add_argument("--chandra-method", choices=("vllm", "hf"), default="vllm")
-    pipeline.add_argument("--chandra-vllm-api-base")
-    pipeline.add_argument("--chandra-max-output-tokens", type=int, default=2048)
-    pipeline.add_argument("--chandra-batch-size", type=int, default=1)
-    pipeline.add_argument("--chandra-max-workers", type=int)
-    pipeline.add_argument("--chandra-max-retries", type=int)
-    pipeline.add_argument("--chandra-max-failure-retries", type=int)
-    pipeline.add_argument("--chandra-temperature", type=float, default=0.0)
-    pipeline.add_argument("--chandra-top-p", type=float, default=0.1)
-    pipeline.add_argument("--chandra-include-images", action="store_true")
-    pipeline.add_argument("--chandra-include-headers-footers", action="store_true")
-    pipeline.add_argument("--chandra-review-bboxes", action="store_true")
-    pipeline.add_argument("--chandra-review-pages")
-    pipeline.add_argument("--chandra-labels", action="store_true")
-    pipeline.add_argument("--chandra-preview-page", type=int, action="append")
     pipeline.set_defaults(func=run_pipeline_command)
 
 
@@ -293,47 +235,6 @@ def run_mistral(args: argparse.Namespace) -> int:
     )
     print(f"pages={result.page_count}")
     print(f"markdown={result.combined_file}")
-    return 0
-
-
-def run_chandra(args: argparse.Namespace) -> int:
-    result = run_chandra_ocr(
-        ChandraOcrOptions(
-            input_pdf=args.input_pdf,
-            out_dir=args.out_dir,
-            pages=args.pages,
-            method=args.method,
-            vllm_api_base=args.vllm_api_base,
-            max_output_tokens=args.max_output_tokens,
-            batch_size=args.batch_size,
-            max_workers=args.max_workers,
-            max_retries=args.max_retries,
-            max_failure_retries=args.max_failure_retries,
-            temperature=args.temperature,
-            top_p=args.top_p,
-            include_images=args.include_images,
-            include_headers_footers=args.include_headers_footers,
-            review_bboxes=args.review_bboxes,
-            review_pdf=args.review_out,
-            review_pages=args.review_pages,
-            review_labels=args.labels,
-            preview_pages=tuple(args.preview_page or ()),
-        )
-    )
-    print(f"pages={result.page_count}")
-    print(f"json={result.json_file}")
-    print(f"markdown={result.markdown_file}")
-    print(f"html={result.html_file}")
-    print(f"metadata={result.metadata_file}")
-    print(f"tokens={result.total_token_count} chunks={result.total_chunk_count}")
-    if result.chunk_labels:
-        labels = ",".join(f"{label}:{count}" for label, count in result.chunk_labels)
-        print(f"chunk_labels={labels}")
-    if result.bboxes_pdf:
-        print(f"review_pages={result.review_page_count} review_boxes={result.review_box_count}")
-        print(f"bboxes_pdf={result.bboxes_pdf}")
-    for preview_file in result.preview_files:
-        print(f"preview={preview_file}")
     return 0
 
 
@@ -387,33 +288,6 @@ def run_review_surya(args: argparse.Namespace) -> int:
         document_key=args.document_key,
         box_source=args.box_source,
         page_base=args.page_base,
-        page_offset=args.page_offset,
-    )
-    pages, boxes = visualize_overlay_pages(
-        input_pdf=input_pdf,
-        overlay_pages=overlay_pages,
-        output_pdf=output_pdf,
-        pages=args.pages,
-        labels=args.labels,
-    )
-    preview_files = render_pdf_page_previews(
-        output_pdf,
-        out_dir=output_pdf.parent / "previews",
-        pages=tuple(args.preview_page or []),
-        prefix=output_pdf.stem,
-    )
-    print(f"pages={pages} boxes={boxes}")
-    print(f"out={output_pdf}")
-    for preview_file in preview_files:
-        print(f"preview={preview_file}")
-    return 0
-
-
-def run_review_chandra(args: argparse.Namespace) -> int:
-    input_pdf = args.input_pdf.expanduser().resolve()
-    output_pdf = args.out.expanduser()
-    overlay_pages = load_chandra_overlay_pages(
-        args.results_json.expanduser().resolve(),
         page_offset=args.page_offset,
     )
     pages, boxes = visualize_overlay_pages(
@@ -524,22 +398,6 @@ def run_pipeline_command(args: argparse.Namespace) -> int:
             review_pages=args.review_pages,
             review_labels=args.review_labels,
             preview_pages=tuple(args.preview_page or ()),
-            chandra_sidecar=args.chandra_sidecar,
-            chandra_method=args.chandra_method,
-            chandra_vllm_api_base=args.chandra_vllm_api_base,
-            chandra_max_output_tokens=args.chandra_max_output_tokens,
-            chandra_batch_size=args.chandra_batch_size,
-            chandra_max_workers=args.chandra_max_workers,
-            chandra_max_retries=args.chandra_max_retries,
-            chandra_max_failure_retries=args.chandra_max_failure_retries,
-            chandra_temperature=args.chandra_temperature,
-            chandra_top_p=args.chandra_top_p,
-            chandra_include_images=args.chandra_include_images,
-            chandra_include_headers_footers=args.chandra_include_headers_footers,
-            chandra_review_bboxes=args.chandra_review_bboxes,
-            chandra_review_pages=args.chandra_review_pages,
-            chandra_labels=args.chandra_labels,
-            chandra_preview_pages=tuple(args.chandra_preview_page or ()),
         )
     )
     print(f"searchable_pdf={result.searchable_pdf}")
@@ -549,13 +407,6 @@ def run_pipeline_command(args: argparse.Namespace) -> int:
     for preview_file in result.word_preview_files:
         print(f"word_preview={preview_file}")
     print(f"mistral_markdown={result.mistral_markdown}")
-    if result.chandra_result:
-        print(f"chandra_markdown={result.chandra_result.markdown_file}")
-        print(f"chandra_metadata={result.chandra_result.metadata_file}")
-        print(f"chandra_tokens={result.chandra_result.total_token_count}")
-        print(f"chandra_chunks={result.chandra_result.total_chunk_count}")
-        if result.chandra_result.bboxes_pdf:
-            print(f"chandra_bboxes_pdf={result.chandra_result.bboxes_pdf}")
     print(f"reconcile={result.reconcile_status}")
     if result.corrected_words_jsonl:
         print(f"corrected_words_jsonl={result.corrected_words_jsonl}")

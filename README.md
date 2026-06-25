@@ -4,9 +4,9 @@ Modern OCRmyPDF engine plugin for searchable PDFs using PaddleOCR PP-OCRv6 word 
 
 This repo is intentionally narrow:
 
-- **Searchable PDF text layer:** PaddleOCR general OCR / PP-OCRv6 with `return_word_box=True`.
+- **Searchable PDF text layer:** RapidOCR ONNX word boxes by default; PaddleOCR is kept as a fallback backend.
 - **PDF writing:** OCRmyPDF 17 `generate_ocr()` / `OcrElement`; no hand-written hOCR path.
-- **Structure sidecars:** separate Markdown/JSON passes such as Mistral OCR, dots.mocr, PP-StructureV3, or PaddleOCR-VL.
+- **Structure sidecars:** Mistral OCR Markdown for content and Surya JSON overlays for layout review.
 - **Reconciliation:** LLM corrections edit the word JSONL, then the PDF is regenerated from corrected data.
 
 No Tesseract path is used.
@@ -28,7 +28,6 @@ The pipeline writes:
 - optional `review-bboxes/input.words.bboxes.pdf`
 - optional `review-bboxes/previews/input.words.bboxes-0001.png`
 - `sidecars/input/input.mistral.md`
-- optional `sidecars/chandra/input/input.chandra.*`
 - `input.pipeline.json`
 - `final/input-OCR.pdf`
 
@@ -42,23 +41,6 @@ Use `--reconcile` to require reconciliation, `--no-reconcile` to skip it, and `-
 The `final` PDF copies the best generated PDF for quick review: the corrected rebuild when reconciliation runs, otherwise the first searchable PDF. Use `--final-suffix -OCR` or `--final-pdf /path/to/output-OCR.pdf` to control that review copy. Use `--font-file /path/to/NotoNaskhArabic.ttf` when rebuilding Persian or Arabic text layers.
 
 Add `--review-bboxes --preview-page N` to render the word-level placement overlay during the same pipeline run.
-
-Add Chandra as a structure sidecar in the same pipeline run when a Chandra vLLM server is already running:
-
-```bash
-uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf pipeline input.pdf runs/input \
-  --pages 39 \
-  --ocr-backend rapidocr \
-  --language fas \
-  --engine onnxruntime \
-  --force-ocr \
-  --review-bboxes \
-  --preview-page 39 \
-  --chandra-sidecar \
-  --chandra-vllm-api-base http://127.0.0.1:8000/v1 \
-  --chandra-review-bboxes \
-  --chandra-preview-page 39
-```
 
 Run only the searchable PDF step:
 
@@ -77,8 +59,8 @@ uv run paddle-searchable-pdf searchable input.pdf output.searchable.pdf
 Useful options:
 
 ```bash
---ocr-backend paddle
 --ocr-backend rapidocr
+--ocr-backend paddle
 --device gpu:0
 --language eng
 --language ara
@@ -131,31 +113,6 @@ uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
   --preview-page 7
 ```
 
-Run Chandra OCR sidecar JSON, Markdown, HTML, and metadata through an existing Chandra vLLM server:
-
-```bash
-uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf chandra-ocr input.pdf runs/chandra \
-  --pages 39 \
-  --method vllm \
-  --vllm-api-base http://127.0.0.1:8000/v1 \
-  --max-output-tokens 2048 \
-  --batch-size 1 \
-  --review-bboxes \
-  --preview-page 39
-```
-
-The Chandra metadata includes total tokens, chunk counts, chunk-label counts, generated artifact paths, and review-preview paths.
-
-Review Chandra OCR/layout chunk JSON boxes directly on the PDF:
-
-```bash
-uv run paddle-searchable-pdf review-chandra input.pdf runs/chandra/page.chandra.json \
-  --out runs/chandra/review-bboxes/input.chandra.bboxes.pdf \
-  --pages 7 \
-  --labels \
-  --preview-page 7
-```
-
 When Surya was run on a selected page, its `results.json` page numbers were local to that run. Use `--page-base` and `--page-offset` to map those boxes back to the original PDF:
 
 ```bash
@@ -195,13 +152,8 @@ uv run paddle-searchable-pdf mistral-ocr input.pdf \
 
 `MISTRAL_API_KEY` is read from the process environment first, then from `/home/simon/github/pimsleur-hub/.env.local`. Use `--env-file` to point at a different file.
 
-Other sidecars should follow the same idea:
-
-- dots.mocr layout JSON/Markdown from `/home/simon/docker/vllm-dots-mocr`
-- Surya OCR/layout/table `results.json`, reviewed with `review-surya`
-- Chandra OCR/layout Markdown, HTML, and chunk JSON, reviewed with `review-chandra`
-- PP-StructureV3 JSON/Markdown
-- PaddleOCR-VL full pipeline JSON/Markdown
+The retained local structure sidecar is Surya OCR/layout/table `results.json`, reviewed with `review-surya`.
+Chandra and dots.mocr experiments are archived in [docs/ocr-wordbox-options.md](docs/ocr-wordbox-options.md); active code uses RapidOCR, Paddle, Surya review, Mistral, and OCRmyPDF.
 
 They are sidecars: semantic structure feeds correction and review, while exact word boxes remain the PDF text-layer contract.
 
@@ -262,7 +214,6 @@ PDF
   -> optional sidecar parsers
        -> Mistral OCR Markdown
        -> Surya block/layout JSON review overlays
-       -> Chandra chunk/layout JSON review overlays
   -> optional LLM reconciliation
   -> optional corrected rebuild
 ```

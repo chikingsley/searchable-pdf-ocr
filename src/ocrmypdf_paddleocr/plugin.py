@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 OCR_ENGINE_NAME = "paddleocr"
-DEFAULT_OCR_BACKEND = "paddle"
+DEFAULT_OCR_BACKEND = "rapidocr"
 OCR_BACKENDS = {"paddle", "rapidocr"}
 
 
