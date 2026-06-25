@@ -1,53 +1,87 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
 
 [project]
 name = "ocrmypdf-paddleocr"
-dynamic = ["version"]
-description = "PaddleOCR plugin for OCRmyPDF"
+version = "0.1.0"
+description = "Modern OCRmyPDF engine plugin using PaddleOCR PP-OCRv6 word boxes."
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MPL-2.0"}
+requires-python = ">=3.12"
+license = "MPL-2.0"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    { name = "chikingsley", email = "cheez2012@gmail.com" },
 ]
 keywords = ["ocr", "pdf", "paddleocr", "ocrmypdf"]
 classifiers = [
-    "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Graphics :: Capture :: Scanners",
     "Topic :: Scientific/Engineering :: Image Recognition",
 ]
 dependencies = [
-    "ocrmypdf>=14.0.0",
-    "paddlepaddle>=2.5.0",
-    "paddleocr>=2.7.0",
-    "pillow>=9.0.0",
+    "httpx>=0.28.1",
+    "mistralai>=2.5.0",
+    "ocrmypdf>=17.7.0",
+    "onnxruntime>=1.27.0",
+    "paddleocr>=3.7.0",
+    "paddlepaddle>=3.3.1",
+    "pillow>=12.2.0",
+    "pydantic>=2.13.4",
+    "pymupdf>=1.27.2.3",
+    "python-dotenv>=1.2.2",
+    "rapidocr>=3.9.0",
 ]
 
+[project.scripts]
+paddle-searchable-pdf = "ocrmypdf_paddleocr.cli:main"
+
 [project.urls]
-Homepage = "https://github.com/yourusername/ocrmypdf-paddleocr"
-Repository = "https://github.com/yourusername/ocrmypdf-paddleocr"
-"Bug Tracker" = "https://github.com/yourusername/ocrmypdf-paddleocr/issues"
+Homepage = "https://github.com/chikingsley/ocrmypdf-paddleocr"
+Repository = "https://github.com/chikingsley/ocrmypdf-paddleocr"
+"Bug Tracker" = "https://github.com/chikingsley/ocrmypdf-paddleocr/issues"
 
 [project.entry-points.ocrmypdf]
 paddleocr = "ocrmypdf_paddleocr.plugin"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[dependency-groups]
+dev = [
+    "dslop>=0.2.2",
+    "pytest>=9.0.2",
+    "ruff>=0.15.19",
+    "ty>=0.0.53",
+    "vulture>=2.16",
+]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.ruff]
+line-length = 120
+target-version = "py312"
 
-[tool.setuptools_scm]
-write_to = "src/ocrmypdf_paddleocr/_version.py"
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",
+    "D",
+    "EM101",
+    "ISC001",
+    "PLR0913",
+    "TC002",
+    "TC003",
+    "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/ocrmypdf_paddleocr/cli.py" = ["T201"]
+"src/ocrmypdf_paddleocr/reconcile.py" = ["T201"]
+"tests/**/*.py" = ["PLR2004", "S101"]
+
+[tool.ty]
+environment.python-version = "3.12"
+
+[tool.vulture]
+paths = ["src"]
+min_confidence = 80

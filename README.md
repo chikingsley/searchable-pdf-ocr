@@ -1,284 +1,284 @@
-# OCRmyPDF-PaddleOCR
+# OCRmyPDF PaddleOCR
 
-A PaddleOCR plugin for OCRmyPDF, enabling the use of PaddleOCR as an alternative OCR engine to Tesseract.
+Modern OCRmyPDF engine plugin for searchable PDFs using PaddleOCR PP-OCRv6 word boxes.
 
-## Features
+This repo is intentionally narrow:
 
-- Drop-in replacement for Tesseract OCR in OCRmyPDF
-- Support for multiple languages including Chinese, Japanese, Korean, and many others
-- GPU acceleration support
-- Text orientation detection
-- Configurable text detection and recognition models
-- **Optimized bounding boxes** for accurate text selection in PDF output
+- **Searchable PDF text layer:** PaddleOCR general OCR / PP-OCRv6 with `return_word_box=True`.
+- **PDF writing:** OCRmyPDF 17 `generate_ocr()` / `OcrElement`; no hand-written hOCR path.
+- **Structure sidecars:** separate Markdown/JSON passes such as Mistral OCR, dots.mocr, PP-StructureV3, or PaddleOCR-VL.
+- **Reconciliation:** LLM corrections edit the word JSONL, then the PDF is regenerated from corrected data.
 
-## Installation
+No Tesseract path is used.
 
-### NixOS
+## One-Shot Searchable PDF
 
-```nix
-# In your NixOS configuration
-{ pkgs }:
-
-let
-  ocrmypdf-paddleocr = pkgs.callPackage ./path/to/ocrmypdf-paddleocr/default.nix {};
-in
-{
-  environment.systemPackages = [
-    ocrmypdf-paddleocr
-  ];
-}
-```
-
-### Using pip
+Run the whole local-plus-API workflow into one output directory:
 
 ```bash
-# Install from source
-pip install .
-
-# Or in development mode
-pip install -e .
+uv run paddle-searchable-pdf pipeline input.pdf runs/input \
+  --pages 1-10 \
+  --device cpu
 ```
 
-### Dependencies
+The pipeline writes:
 
-- Python >= 3.8
-- OCRmyPDF >= 14.0.0
-- PaddlePaddle >= 2.5.0
-- PaddleOCR >= 2.7.0
-- Pillow >= 9.0.0
+- `searchable/input.searchable.pdf`
+- `searchable/input.words.jsonl`
+- optional `review-bboxes/input.words.bboxes.pdf`
+- optional `review-bboxes/previews/input.words.bboxes-0001.png`
+- `sidecars/input/input.mistral.md`
+- optional `sidecars/chandra/input/input.chandra.*`
+- `input.pipeline.json`
+- `final/input-OCR.pdf`
 
-## Usage
+By default it also runs Superwhisper/Sonnet reconciliation when `SUPERWHISPER_API_KEY` is present, then rebuilds:
 
-### Command Line
+- `reconcile/input.corrected.words.jsonl`
+- `rebuild/input.corrected.searchable.pdf`
 
-Use PaddleOCR as the OCR engine with the `--plugin` flag:
+Use `--reconcile` to require reconciliation, `--no-reconcile` to skip it, and `--no-rebuild` to keep corrected JSONL without regenerating the PDF. `--env-file` is passed to Mistral and can also supply `SUPERWHISPER_API_KEY` for the pipeline.
+
+The `final` PDF copies the best generated PDF for quick review: the corrected rebuild when reconciliation runs, otherwise the first searchable PDF. Use `--final-suffix -OCR` or `--final-pdf /path/to/output-OCR.pdf` to control that review copy. Use `--font-file /path/to/NotoNaskhArabic.ttf` when rebuilding Persian or Arabic text layers.
+
+Add `--review-bboxes --preview-page N` to render the word-level placement overlay during the same pipeline run.
+
+Add Chandra as a structure sidecar in the same pipeline run when a Chandra vLLM server is already running:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr input.pdf output.pdf
+uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf pipeline input.pdf runs/input \
+  --pages 39 \
+  --ocr-backend rapidocr \
+  --language fas \
+  --engine onnxruntime \
+  --force-ocr \
+  --review-bboxes \
+  --preview-page 39 \
+  --chandra-sidecar \
+  --chandra-vllm-api-base http://127.0.0.1:8000/v1 \
+  --chandra-review-bboxes \
+  --chandra-preview-page 39
 ```
 
-### With Language Selection
+Run only the searchable PDF step:
 
 ```bash
-# English
-ocrmypdf --plugin ocrmypdf_paddleocr -l eng input.pdf output.pdf
-
-# Chinese Simplified
-ocrmypdf --plugin ocrmypdf_paddleocr -l chi_sim input.pdf output.pdf
-
-# Multiple languages (uses first language)
-ocrmypdf --plugin ocrmypdf_paddleocr -l eng+fra input.pdf output.pdf
+uv run paddle-searchable-pdf input.pdf output.searchable.pdf \
+  --device cpu \
+  --words-jsonl runs/input.words.jsonl
 ```
 
-### With GPU Acceleration
+The command is equivalent to:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr --paddle-use-gpu input.pdf output.pdf
+uv run paddle-searchable-pdf searchable input.pdf output.searchable.pdf
 ```
 
-### Python API
-
-```python
-import ocrmypdf
-
-ocrmypdf.ocr(
-    'input.pdf',
-    'output.pdf',
-    plugins=['ocrmypdf_paddleocr'],
-    language='eng'
-)
-
-# With GPU
-ocrmypdf.ocr(
-    'input.pdf',
-    'output.pdf',
-    plugins=['ocrmypdf_paddleocr'],
-    language='chi_sim',
-    paddle_use_gpu=True
-)
-```
-
-## Command Line Options
-
-The plugin adds the following PaddleOCR-specific options:
-
-- `--paddle-use-gpu`: Use GPU acceleration (requires GPU-enabled PaddlePaddle)
-- `--paddle-no-angle-cls`: Disable text orientation classification
-- `--paddle-show-log`: Show PaddleOCR internal logging
-- `--paddle-det-model-dir DIR`: Path to custom text detection model directory
-- `--paddle-rec-model-dir DIR`: Path to custom text recognition model directory
-- `--paddle-cls-model-dir DIR`: Path to custom text orientation classification model directory
-
-## Supported Languages
-
-PaddleOCR supports many languages. The plugin maps common Tesseract language codes to PaddleOCR codes:
-
-| Tesseract Code | PaddleOCR Code | Language |
-|---------------|----------------|----------|
-| eng | en | English |
-| chi_sim | ch | Chinese Simplified |
-| chi_tra | chinese_cht | Chinese Traditional |
-| fra | fr | French |
-| deu | german | German |
-| spa | spanish | Spanish |
-| rus | ru | Russian |
-| jpn | japan | Japanese |
-| kor | korean | Korean |
-| ara | ar | Arabic |
-| hin | hi | Hindi |
-| por | pt | Portuguese |
-| ita | it | Italian |
-| tur | tr | Turkish |
-| vie | vi | Vietnamese |
-| tha | th | Thai |
-
-And many more! See PaddleOCR documentation for the complete list.
-
-## Examples
-
-### Basic OCR
+Useful options:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr input.pdf output.pdf
+--ocr-backend paddle
+--ocr-backend rapidocr
+--device gpu:0
+--language eng
+--language ara
+--pages 1-10
+--jobs 2
+--force-ocr
+--skip-text
+--deskew
+--rotate-pages
+--det-model-name PP-OCRv6_medium_det
+--rec-model-name PP-OCRv6_medium_rec
+--engine onnxruntime
+--enable-hpi
+--rec-batch-size 8
+--words-jsonl runs/doc.words.jsonl
 ```
 
-### Force OCR on all pages
+For Persian/Farsi A/B runs, compare the Paddle path against RapidOCR in separate run folders:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr --force-ocr input.pdf output.pdf
+uv run paddle-searchable-pdf searchable input.pdf runs/input-fa/paddle/output.searchable.pdf \
+  --ocr-backend paddle \
+  --language fas \
+  --ocr-version PP-OCRv5 \
+  --rec-model-name arabic_PP-OCRv5_mobile_rec \
+  --engine onnxruntime \
+  --words-jsonl runs/input-fa/paddle/words.jsonl
+
+uv run paddle-searchable-pdf searchable input.pdf runs/input-fa/rapidocr/output.searchable.pdf \
+  --ocr-backend rapidocr \
+  --language fas \
+  --words-jsonl runs/input-fa/rapidocr/words.jsonl
 ```
 
-### Skip pages that already have text
+Review box placement directly on the PDF:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr --skip-text input.pdf output.pdf
+uv run paddle-searchable-pdf review-bboxes input.pdf \
+  --words-jsonl runs/input-fa/paddle/words.jsonl \
+  --out runs/input-fa/review-bboxes/paddle.bboxes.pdf
 ```
 
-### Optimize output file size
+Review Surya OCR/layout JSON boxes directly on the PDF:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr --optimize 3 input.pdf output.pdf
+uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
+  --out runs/surya/review-bboxes/input.surya.bboxes.pdf \
+  --pages 7 \
+  --labels \
+  --preview-page 7
 ```
 
-### Chinese document with GPU
+Run Chandra OCR sidecar JSON, Markdown, HTML, and metadata through an existing Chandra vLLM server:
 
 ```bash
-ocrmypdf --plugin ocrmypdf_paddleocr -l chi_sim --paddle-use-gpu input.pdf output.pdf
+uv run --with chandra-ocr==0.2.0 paddle-searchable-pdf chandra-ocr input.pdf runs/chandra \
+  --pages 39 \
+  --method vllm \
+  --vllm-api-base http://127.0.0.1:8000/v1 \
+  --max-output-tokens 2048 \
+  --batch-size 1 \
+  --review-bboxes \
+  --preview-page 39
 ```
+
+The Chandra metadata includes total tokens, chunk counts, chunk-label counts, generated artifact paths, and review-preview paths.
+
+Review Chandra OCR/layout chunk JSON boxes directly on the PDF:
+
+```bash
+uv run paddle-searchable-pdf review-chandra input.pdf runs/chandra/page.chandra.json \
+  --out runs/chandra/review-bboxes/input.chandra.bboxes.pdf \
+  --pages 7 \
+  --labels \
+  --preview-page 7
+```
+
+When Surya was run on a selected page, its `results.json` page numbers were local to that run. Use `--page-base` and `--page-offset` to map those boxes back to the original PDF:
+
+```bash
+uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
+  --document-key "Units 01-05 Listening" \
+  --page-base 1 \
+  --page-offset 6 \
+  --out runs/surya/review-bboxes/page-7.surya.bboxes.pdf \
+  --pages 7 \
+  --preview-page 7
+```
+
+Run both local word-box backends into one organized comparison folder:
+
+```bash
+uv run paddle-searchable-pdf compare-backends input.pdf runs/input-fa/compare-page7 \
+  --language fas \
+  --ocr-version PP-OCRv5 \
+  --rec-model-name arabic_PP-OCRv5_mobile_rec \
+  --engine onnxruntime \
+  --force-ocr \
+  --jobs 1 \
+  --pages 7 \
+  --preview-page 7
+```
+
+`compare-backends` writes one backend folder per engine, review bbox PDFs, optional preview PNGs, and a `*.compare.json` manifest with page/line/word counts, Arabic-script counts, per-page stats, and elapsed time.
+
+## Structure Sidecar
+
+Mistral OCR sidecar:
+
+```bash
+uv run paddle-searchable-pdf mistral-ocr input.pdf \
+  --out-dir runs/sidecars
+```
+
+`MISTRAL_API_KEY` is read from the process environment first, then from `/home/simon/github/pimsleur-hub/.env.local`. Use `--env-file` to point at a different file.
+
+Other sidecars should follow the same idea:
+
+- dots.mocr layout JSON/Markdown from `/home/simon/docker/vllm-dots-mocr`
+- Surya OCR/layout/table `results.json`, reviewed with `review-surya`
+- Chandra OCR/layout Markdown, HTML, and chunk JSON, reviewed with `review-chandra`
+- PP-StructureV3 JSON/Markdown
+- PaddleOCR-VL full pipeline JSON/Markdown
+
+They are sidecars: semantic structure feeds correction and review, while exact word boxes remain the PDF text-layer contract.
+
+## Reconcile
+
+Use Sonnet through the local Superwhisper API to correct OCR word text against one or more sidecars:
+
+```bash
+SUPERWHISPER_API_KEY=... uv run paddle-searchable-pdf reconcile \
+  --words-jsonl runs/input.words.jsonl \
+  --sidecar runs/sidecars/input/input.mistral.md \
+  --out runs/input.corrected.words.jsonl
+```
+
+The reconciler keeps `word_id` and `bbox` fixed. It only writes `corrected_text`.
+
+## Rebuild From Corrected Words
+
+```bash
+uv run paddle-searchable-pdf rebuild input.pdf \
+  --words-jsonl runs/input.corrected.words.jsonl \
+  --out output.corrected.searchable.pdf
+```
+
+Normal production should prefer the OCRmyPDF one-shot renderer. `rebuild` exists so corrected OCR data can be regenerated without running PaddleOCR again.
+
+## Runtime Notes
+
+The CLI bypasses OCRmyPDF's built-in Tesseract binary probe while keeping OCRmyPDF's normal PDF pipeline. CPU PP-OCRv6 also sets `PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT=0`, because current PaddlePaddle CPU inference can hit a oneDNN/PIR crash with PP-OCRv6.
+
+The one-shot OCRmyPDF path is validated on scanned/image PDFs. Vector-only synthetic PDFs currently hit an OCRmyPDF 17 zero-DPI renderer edge case in the modern `generate_ocr()` path; for those, use `rebuild` from generated word JSONL or rasterize first.
+
+Acceleration flags are exposed through the CLI, but the installed environment must provide the matching backend. Use `paddlepaddle-gpu` from a CUDA-specific PaddlePaddle index for GPU execution, and install PaddleX HPI / Paddle2ONNX / ONNX Runtime before using `--enable-hpi` or `--engine onnxruntime`.
+
+The current PP-OCRv6 50-language set covers Chinese, English, Japanese, and Latin-script languages. Use the PP-OCRv5 Arabic-family recognizer for Persian text:
+
+```bash
+uv run paddle-searchable-pdf pipeline input.pdf runs/input-fa \
+  --language fas \
+  --ocr-version PP-OCRv5 \
+  --rec-model-name arabic_PP-OCRv5_mobile_rec \
+  --engine onnxruntime
+```
+
+RapidOCR is available as a second local backend for A/B runs. For Arabic-script languages, it uses RapidOCR 3.9.0 with a PP-OCRv6 small detector and Arabic PP-OCRv5 mobile recognizer.
+
+## Architecture
+
+```text
+PDF
+  -> OCRmyPDF raster page
+  -> selected word-box backend
+       -> PaddleOCR PP-OCRv6 predict(return_word_box=True)
+       -> RapidOCR return_word_box=True
+  -> PAGE/LINE/WORD OcrElement tree
+  -> OCRmyPDF searchable PDF
+  -> optional word JSONL
+  -> optional sidecar parsers
+       -> Mistral OCR Markdown
+       -> Surya block/layout JSON review overlays
+       -> Chandra chunk/layout JSON review overlays
+  -> optional LLM reconciliation
+  -> optional corrected rebuild
+```
+
+## Why PP-OCRv6 Here
+
+PaddleOCR's current general OCR pipeline defaults to PP-OCRv6 medium in PaddleOCR 3.7. The docs also expose `return_word_box`, the data contract needed for a real searchable PDF text layer; PaddleOCR-VL and document parsers still help with structure, table/context review, and correction prompts, while PP-OCRv6 remains the stronger source for word-level PDF placement.
 
 ## Development
 
-### Running Tests
-
 ```bash
-pytest tests/
+uv lock
+uv run ruff format .
+uv run ruff check .
+uv run ty check
+uv run pytest
+uv run vulture src
+uv run dslop README.md AGENTS.md docs src
 ```
-
-### Building from Source
-
-```bash
-# Install in development mode
-pip install -e .
-
-# Build distribution
-python -m build
-```
-
-## How It Works
-
-The plugin implements the OCRmyPDF `OcrEngine` interface, which requires:
-
-1. **Language support**: Maps OCRmyPDF/Tesseract language codes to PaddleOCR codes
-2. **Text detection**: Uses PaddleOCR to detect text regions in images
-3. **Text recognition**: Recognizes text within detected regions
-4. **hOCR generation**: Converts PaddleOCR output to hOCR format for OCRmyPDF to overlay on PDFs
-
-PaddleOCR processes each page image and returns bounding boxes with recognized text and confidence scores. The plugin converts this to hOCR (HTML-based OCR) format, which OCRmyPDF uses to create a searchable PDF.
-
-## Bounding Box Accuracy
-
-This plugin includes optimized bounding box calculation for accurate text selection in the output PDF:
-
-### Native Word-Level Boxes (PaddleOCR 3.x)
-
-The plugin uses PaddleOCR 3.x's native `return_word_box=True` parameter to get accurate word-level bounding boxes directly from the OCR engine:
-- Native word boxes provide precise boundaries for each word
-- Automatic merging of split tokens (handles German umlauts, punctuation, etc.)
-- Falls back to estimation algorithm when word boxes aren't available (e.g., blank pages)
-
-**Result**: Word bounding boxes are now pixel-accurate, matching exactly what PaddleOCR detected.
-
-### Polygon-Based Vertical Bounds
-
-Instead of using simple min/max coordinates, the plugin uses PaddleOCR's 4-point polygon geometry:
-- For horizontal text, points 0-1 define the top edge and points 2-3 define the bottom edge
-- Averaging these edge points provides tighter vertical bounds
-- Falls back to min/max for non-standard polygon shapes
-
-**Result**: Line heights are reduced by 2-3 pixels (3-6%), providing tighter text selection without clipping.
-
-These improvements make text selection in the output PDF more precise and visually aligned with the actual text in the document. For technical details, see [CLAUDE.md](CLAUDE.md).
-
-## Troubleshooting
-
-### Import Error: PaddleOCR not found
-
-Make sure PaddlePaddle and PaddleOCR are installed:
-
-```bash
-pip install paddlepaddle paddleocr
-```
-
-For GPU support:
-
-```bash
-# CUDA 11.x
-pip install paddlepaddle-gpu
-
-# CUDA 12.x
-pip install paddlepaddle-gpu==3.0.0b1 -i https://www.paddlepaddle.org.cn/packages/stable/cu123/
-```
-
-### Poor OCR Quality
-
-Try these options:
-
-1. Increase image quality: `--oversample 300`
-2. Preprocess images: `--clean` or `--deskew`
-3. Disable angle classification if it's causing issues: `--paddle-no-angle-cls`
-
-### GPU Not Being Used
-
-Verify PaddlePaddle GPU installation:
-
-```python
-import paddle
-print(paddle.device.is_compiled_with_cuda())  # Should return True
-print(paddle.device.get_device())  # Should show GPU
-```
-
-## License
-
-MPL-2.0 - Same as OCRmyPDF
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## Credits
-
-- [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF) - PDF OCR tool
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - Multilingual OCR toolkit
-- [PaddlePaddle](https://github.com/PaddlePaddle/Paddle) - Deep learning framework
-
-## See Also
-
-- [OCRmyPDF Documentation](https://ocrmypdf.readthedocs.io/)
-- [OCRmyPDF Plugin Development](https://ocrmypdf.readthedocs.io/en/latest/plugins.html)
-- [PaddleOCR Documentation](https://github.com/PaddlePaddle/PaddleOCR/blob/main/README_en.md)

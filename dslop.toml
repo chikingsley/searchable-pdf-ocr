@@ -1,0 +1,3 @@
+[metrics]
+sentence-length-cv = false
+sentence-length-kurtosis = false
