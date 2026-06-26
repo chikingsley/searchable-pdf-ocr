@@ -20,6 +20,7 @@ Created:
 
 - `tools/make_fixture.py`
 - `tools/simple_visible_edit.py`
+- `tools/scanfont_edit.py`
 - `tools/verify_pdf.py`
 
 Controlled fixture:
@@ -48,6 +49,45 @@ Evidence from `verify_pdf.py`:
 - Render comparison, ideal edited vector source versus visible edit at 150 DPI: changed pixel ratio `0.002016399286987522`.
 
 This proves the PDF-side editability gate: we can mask a scanned region, insert real visible PDF text, extract that text, and measure visual drift.
+
+## Scan-Derived Font Proof
+
+Command:
+
+```bash
+uv run experiments/clearscan/tools/scanfont_edit.py \
+  experiments/clearscan/fixtures/control/control_scan.pdf \
+  experiments/clearscan/fixtures/control/control_source.pdf \
+  experiments/clearscan/artifacts/scanfont-control/control-scanfont-edit.pdf \
+  --font-out experiments/clearscan/artifacts/scanfont-control/ScanGlyphControl-Regular.ttf \
+  --crops-dir experiments/clearscan/artifacts/scanfont-control/crops \
+  --manifest experiments/clearscan/artifacts/scanfont-control/manifest.json \
+  --source-text 'CLEARSCAN EDIT TEST 2026' \
+  --text 'CLEARSCAN EDIT TEST 2022' \
+  --erase 70 84 522 131 \
+  --pos 72 120 \
+  --font-size 32
+```
+
+Generated local artifacts:
+
+- `artifacts/scanfont-control/ScanGlyphControl-Regular.ttf`, `2104` bytes.
+- `artifacts/scanfont-control/control-scanfont-edit.pdf`, `62010` bytes.
+- `artifacts/scanfont-control/crops/*.png` glyph crops from the scanned page.
+- `artifacts/scanfont-control/manifest.json` with source boxes, crop paths, contour counts, and advances.
+
+Evidence from `verify_pdf.py` and `fontTools`:
+
+- Extracted text: `CLEARSCAN EDIT TEST 2022`.
+- Visible span font: `ScanGlyphControl-Regular`.
+- PDF font entry: embedded `ttf`, `Type0`, `ScanGlyphControl Regular`, `Identity-H`.
+- Generated font cmap includes `space`, `0`, `2`, `A`, `C`, `D`, `E`, `I`, `L`, `N`, `R`, `S`, and `T`.
+- Render comparison, scan versus scan-font edit at 150 DPI: changed pixel ratio `0.00865597147950089`.
+- Render comparison, ideal `2022` vector source versus scan-font edit at 150 DPI: changed pixel ratio `0.009109447415329769`.
+
+The first ClearScan-style local proof now works: glyph shapes are cropped from the scanned page, traced into a tiny document-specific TTF with Unicode mappings, embedded in the PDF, and used as real visible editable text. The first proof edits `2026` to `2022` because every replacement glyph is observed in the source scan.
+
+Next gap: missing glyph synthesis. Changing `2026` to `2027` requires a `7` glyph source, a fallback font, or a generation model.
 
 ## Upstream Clone Triage
 

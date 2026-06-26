@@ -73,6 +73,7 @@ def probe(pdf: Path, *, page_number: int, out: Path | None) -> dict[str, Any]:
     page = doc[page_number - 1]
     spans = text_spans(pdf, page_number=page_number)
     fonts = sorted({str(span["font"]) for span in spans if span.get("font")})
+    page_fonts = [list(font) for font in page.get_fonts(full=True)]
     result = {
         "pdf": str(pdf),
         "page_number": page_number,
@@ -81,6 +82,7 @@ def probe(pdf: Path, *, page_number: int, out: Path | None) -> dict[str, Any]:
         "text": page.get_text().strip(),
         "span_count": len(spans),
         "fonts": fonts,
+        "page_fonts": page_fonts,
         "spans": spans,
     }
     if out:

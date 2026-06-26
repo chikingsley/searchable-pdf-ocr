@@ -2346,6 +2346,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "dslop" },
+    { name = "fonttools" },
     { name = "mdformat" },
     { name = "mdformat-gfm" },
     { name = "mdformat-pyproject" },
@@ -2373,6 +2374,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "dslop", specifier = ">=0.2.2" },
+    { name = "fonttools", specifier = ">=4.63.0" },
     { name = "mdformat", specifier = ">=1.0.0" },
     { name = "mdformat-gfm", specifier = ">=1.0.0" },
     { name = "mdformat-pyproject", specifier = ">=0.1.1" },

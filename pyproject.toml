@@ -51,6 +51,7 @@ searchable_pdf_ocr = "searchable_pdf_ocr.plugin"
 [dependency-groups]
 dev = [
     "dslop>=0.2.2",
+    "fonttools>=4.63.0",
     "mdformat>=1.0.0",
     "mdformat-gfm>=1.0.0",
     "mdformat-pyproject>=0.1.1",

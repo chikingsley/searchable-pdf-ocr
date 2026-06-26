@@ -49,6 +49,23 @@ Probe a PDF:
 uv run experiments/clearscan/tools/verify_pdf.py probe experiments/clearscan/fixtures/control/control_scan.pdf
 ```
 
+Build a tiny scan-derived font and use it for a visible edit:
+
+```bash
+uv run experiments/clearscan/tools/scanfont_edit.py \
+  experiments/clearscan/fixtures/control/control_scan.pdf \
+  experiments/clearscan/fixtures/control/control_source.pdf \
+  experiments/clearscan/artifacts/scanfont-control/control-scanfont-edit.pdf \
+  --font-out experiments/clearscan/artifacts/scanfont-control/ScanGlyphControl-Regular.ttf \
+  --crops-dir experiments/clearscan/artifacts/scanfont-control/crops \
+  --manifest experiments/clearscan/artifacts/scanfont-control/manifest.json \
+  --source-text 'CLEARSCAN EDIT TEST 2026' \
+  --text 'CLEARSCAN EDIT TEST 2022' \
+  --erase 70 84 522 131 \
+  --pos 72 120 \
+  --font-size 32
+```
+
 Compare two PDFs by rendered page pixels:
 
 ```bash
