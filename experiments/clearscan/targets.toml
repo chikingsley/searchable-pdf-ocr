@@ -1,0 +1,49 @@
+[[target]]
+name = "smoothscan"
+repo = "https://github.com/ncraun/smoothscan.git"
+kind = "historical-clearscan"
+priority = 1
+notes = "Closest architectural prior art: symbol table, potrace vectorization, generated TrueType font embedded into PDF."
+
+[[target]]
+name = "vecglypher"
+repo = "https://github.com/xk-huang/VecGlypher.git"
+kind = "vector-glyph-generation"
+priority = 1
+notes = "CVPR 2026 vector glyph generation as SVG paths; best fit for missing glyph outlines if inference assets are obtainable."
+
+[[target]]
+name = "gar-font"
+repo = "https://github.com/xtryer-s/GAR-Font.git"
+kind = "few-shot-font-generation"
+priority = 2
+notes = "CVPR 2026 multimodal few-shot font generation; likely raster output and checkpoint-heavy, but current SOTA reference."
+
+[[target]]
+name = "glyphspatialnet"
+repo = "https://github.com/sp777g/GlyphSpatialNet.git"
+kind = "glyph-spatial-generation"
+priority = 3
+notes = "CVPR 2026 spatial preservation for font generation; inspect preprocessing/vectorization ideas first."
+
+[[target]]
+name = "fontanimate"
+repo = "https://github.com/zichongc/FontAnimate.git"
+kind = "few-shot-font-generation"
+priority = 3
+notes = "ICCV 2025 diffusion few-shot font generation; likely useful only if runnable checkpoints exist."
+
+[[target]]
+name = "fontdiffuser"
+repo = "https://github.com/yeungchenwa/fontdiffuser.git"
+hf_space = "https://huggingface.co/spaces/yeungchenwa/FontDiffuser-Gradio"
+kind = "raster-font-generation"
+priority = 2
+notes = "AAAI 2024 one-shot diffusion font generation. HF Space provides public checkpoints and ran locally in the first smoke test."
+
+[[target]]
+name = "gc-font"
+repo = "https://github.com/wrchen2001/GC-Font.git"
+kind = "few-shot-font-generation"
+priority = 3
+notes = "BMVC 2025 global contextual few-shot font generation. Includes some pretrained RQ-VAE weights, but the main generator still needs training weights."

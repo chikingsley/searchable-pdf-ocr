@@ -1,0 +1,11 @@
+artifacts/*
+cache/*
+fixtures/*
+repos/*
+reports/*
+
+!artifacts/.gitkeep
+!cache/.gitkeep
+!fixtures/.gitkeep
+!repos/.gitkeep
+!reports/.gitkeep
