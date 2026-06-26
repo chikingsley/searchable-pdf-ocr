@@ -15,7 +15,7 @@ This is a searchable-PDF creator built on OCRmyPDF's writer/raster pipeline. The
 
 No Tesseract path is used.
 
-The project license is MPL-2.0 because this started as an MPL-licensed OCRmyPDF plugin fork. Keep `LICENSE` with source distributions and keep MPL notices intact. See [docs/license-and-origin.md](docs/license-and-origin.md) for the practical license boundary.
+The project license is MPL-2.0 because this started as an MPL-licensed OCRmyPDF plugin fork. Keep `LICENSE` with source distributions and keep MPL notices intact.
 
 ## Model Roles
 
@@ -206,12 +206,6 @@ uv run searchable-pdf-ocr rebuild input.pdf \
 
 Normal production should prefer the OCRmyPDF one-shot renderer. `rebuild` exists so corrected OCR data can be regenerated without running OCR again.
 
-## Searchable vs Editable PDF
-
-This project currently creates searchable PDFs. The scanned page image remains the visible page, and OCRmyPDF places an invisible text layer over it for search and copy.
-
-Editable PDFs are a different target: the visible page text must become real PDF text objects with fonts, sizes, spacing, and background cleanup. That needs another export path on top of the OCR/layout data. See [docs/editable-pdf-notes.md](docs/editable-pdf-notes.md).
-
 ## Architecture
 
 ```text
@@ -250,5 +244,3 @@ uv run vulture src tests --min-confidence 80
 uv run dslop README.md AGENTS.md docs src
 uv run mdformat --check README.md AGENTS.md docs
 ```
-
-Markdown formatting uses `mdformat`, `mdformat-gfm`, and `mdformat-pyproject`. `mdformat` is the formatter, `mdformat-gfm` preserves GitHub-flavored Markdown behavior, and `mdformat-pyproject` lets the repo keep `wrap = "no"` and `end_of_line = "lf"` in `pyproject.toml`.
