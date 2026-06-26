@@ -1,4 +1,4 @@
-"""OCRmyPDF PaddleOCR plugin."""
+"""Searchable PDF OCR plugin."""
 
 __version__ = "0.1.0"
 

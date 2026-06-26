@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ocrmypdf_paddleocr.mistral_sidecar import MistralOcrResult
-from ocrmypdf_paddleocr.workflows import pipeline as pipeline_workflow
-from ocrmypdf_paddleocr.workflows.pipeline import PipelineOptions
+from searchable_pdf_ocr.mistral_sidecar import MistralOcrResult
+from searchable_pdf_ocr.workflows import pipeline as pipeline_workflow
+from searchable_pdf_ocr.workflows.pipeline import PipelineOptions
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.workflows.searchable import SearchableOptions
+    from searchable_pdf_ocr.workflows.searchable import SearchableOptions
 
 
 def test_pipeline_auto_reconciles_and_rebuilds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

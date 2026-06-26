@@ -7,9 +7,9 @@ from typing import Any
 
 import httpx
 
-from ocrmypdf_paddleocr.constants import DEFAULT_RECONCILE_MODEL, DEFAULT_SUPERWHISPER_URL
-from ocrmypdf_paddleocr.rebuild import load_page_records
-from ocrmypdf_paddleocr.schema import PageRecord, ReconcileResponse
+from searchable_pdf_ocr.constants import DEFAULT_RECONCILE_MODEL, DEFAULT_SUPERWHISPER_URL
+from searchable_pdf_ocr.rebuild import load_page_records
+from searchable_pdf_ocr.schema import PageRecord, ReconcileResponse
 
 SYSTEM_PROMPT = """You correct OCR word text using sidecar document parses.
 

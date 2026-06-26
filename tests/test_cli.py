@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ocrmypdf_paddleocr.cli import build_parser
+from searchable_pdf_ocr.cli import build_parser
 
 
 def test_language_option_replaces_default_when_explicit() -> None:

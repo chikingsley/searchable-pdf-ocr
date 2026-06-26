@@ -1,4 +1,4 @@
-# OCR Word-Box Options
+# OCR Backend Experiments
 
 Last checked: 2026-06-25.
 
@@ -24,19 +24,19 @@ For Arabic-script languages, native word tokens can be worse than line text. Pad
 
 PyPI latest checks on 2026-06-25:
 
-| Package | Latest | Current State |
-| --- | ---: | --- |
-| `paddleocr` | 3.7.0 | locked |
-| `paddlex` | 3.7.2 | locked |
-| `paddlepaddle` | 3.3.1 | locked |
-| `onnxruntime` | 1.27.0 | locked |
-| `ocrmypdf` | 17.7.0 | locked |
-| `pymupdf` | 1.27.2.3 | locked |
-| `rapidocr` | 3.9.0 | locked; available through `--ocr-backend rapidocr` |
-| `easyocr` | 1.7.2 | queued |
-| `surya-ocr` | 0.20.0 | tested via `uvx`; review adapter ready for `results.json`; engine install stays external |
-| `chandra-ocr` | 0.2.0 | tested via `uvx`; archived after local fixture tests because boxes were coarse chunks instead of line/word placement |
-| `python-doctr` | 1.0.1 | queued |
+| Package        |   Latest | Current State                                                                                                        |
+| -------------- | -------: | -------------------------------------------------------------------------------------------------------------------- |
+| `paddleocr`    |    3.7.0 | locked                                                                                                               |
+| `paddlex`      |    3.7.2 | locked                                                                                                               |
+| `paddlepaddle` |    3.3.1 | locked                                                                                                               |
+| `onnxruntime`  |   1.27.0 | locked                                                                                                               |
+| `ocrmypdf`     |   17.7.0 | locked                                                                                                               |
+| `pymupdf`      | 1.27.2.3 | locked                                                                                                               |
+| `rapidocr`     |    3.9.0 | locked; available through `--ocr-backend rapidocr`                                                                   |
+| `easyocr`      |    1.7.2 | queued                                                                                                               |
+| `surya-ocr`    |   0.20.0 | tested via `uvx`; review adapter ready for `results.json`; engine install stays external                             |
+| `chandra-ocr`  |    0.2.0 | tested via `uvx`; archived after local fixture tests because boxes were coarse chunks instead of line/word placement |
+| `python-doctr` |    1.0.1 | queued                                                                                                               |
 
 `uv 0.11.24` reports itself current by `uv self update --dry-run`.
 
@@ -46,7 +46,7 @@ PyPI latest checks on 2026-06-25:
 
    Default local searchable-PDF locator. It is local, ONNX Runtime works on CPU, and it exposes `return_word_box=True`. The repo backend uses `LangRec.ARABIC` and PP-OCRv5 Arabic mobile recognition for Arabic-script languages. On the DLI Persian page 7 and FSI Persian page 39 fixtures, RapidOCR was faster and produced more granular word-level placement.
 
-2. PaddleOCR / PaddleX PP-OCR
+1. PaddleOCR / PaddleX PP-OCR
 
    Fallback local searchable-PDF locator. The integration already calls `PaddleOCR.predict(..., return_word_box=True)` and stores line/word boxes in JSONL. PP-OCRv6 is the current default OCR family, but for Persian/Farsi use the Arabic-script PP-OCRv5 recognizer explicitly. It is slower on the checked fixtures, but it remains defensible because the OCRmyPDF path is conservative and the Arabic-script line-text fix produced correct-direction text on the DLI page 7 failure cases.
 
@@ -57,23 +57,23 @@ PyPI latest checks on 2026-06-25:
    - Engine: `onnxruntime`
    - Device: `cpu`
 
-3. dots.ocr / dots.mocr
+1. dots.ocr / dots.mocr
 
    Useful for document layout and content extraction on GPU, but its public local path is block/layout JSON rather than a proven word-level text-layer engine. Archived for this repo's current pipeline.
 
-4. Surya 0.20.0
+1. Surya 0.20.0
 
    Useful for local layout and line detection. Current OCR output is block HTML / layout-oriented, so it fits geometry-helper or quality-reference work better than direct word-box replacement. The repo now has `review-surya` to draw Surya OCR/layout boxes from `results.json` on top of the source PDF. Runtime is heavier than Paddle/RapidOCR: the tested CLI path launched `vllm/vllm-openai:v0.20.1` in Docker and that image is `31.8GB`.
 
-5. Chandra OCR 2 / `chandra-ocr 0.2.0`
+1. Chandra OCR 2 / `chandra-ocr 0.2.0`
 
    Strong local document OCR/content benchmark candidate, including Arabic-script benchmark coverage. The official CLI writes Markdown, HTML, and metadata. Local runs on the FSI and DLI fixtures produced useful table/section layout blocks, but the boxes are coarse document chunks rather than line or word placement. It is archived in docs/history and removed from active code.
 
-6. EasyOCR 1.7.2
+1. EasyOCR 1.7.2
 
    Local and simple, with text-region boxes. Keep it as a quick sanity test for documents where Paddle/RapidOCR fail, behind the primary word-placement engines.
 
-7. docTR 1.0.1
+1. docTR 1.0.1
 
    Good object model with page/block/line/word output, but language coverage is the blocker. Treat Persian/Arabic readiness as unproven until a suitable recognizer passes a fixture.
 
@@ -83,26 +83,26 @@ Fixture:
 
 `runs/dli-persian/units-01-05-listening/triage-pages-1-10/input/Units 01-05 Listening.pages-1-10.pdf`
 
-| Variant | Models | Pages | Words | Page 7 Words | Time / Status |
-| --- | --- | ---: | ---: | ---: | --- |
-| `current-explicit-no-orient` | `PP-OCRv6_medium_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx` | 10 | 693 | 97 | 1:54.89 wall |
-| `explicit-orientation` | orientation classifiers + `PP-OCRv6_medium_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx` | 10 | 696 | 97 | 2:09.98 wall |
-| `auto-lang-fa-ppocrv5` | selected `PP-OCRv5_server_det_onnx` + `en_PP-OCRv5_mobile_rec_onnx` | 6 partial | 241 | 0 | stopped; wrong recognizer |
-| `server-det-arabic-rec` | `PP-OCRv5_server_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx` | 4 partial | 168 | 0 | stopped at 8:22.93 wall / 3328.84s user |
-| `current-explicit-no-orient-rtl-line-text` | same as current, with Arabic-script line text used for word text | 10 | 693 | 97 | 1:55.15 wall |
-| `rapidocr-arabic-ppocrv5` | RapidOCR PP-OCRv6 small detector + Arabic PP-OCRv5 mobile recognizer | 1 page | 36 text lines | n/a | 3.45s engine elapse / 3.83s wall |
-| `paddle-compare-page7` | `compare-backends` Paddle run on page 7 | 1 selected page | 97 | 97 | 14.985s backend elapsed |
-| `rapidocr-compare-page7` | `compare-backends` RapidOCR run on page 7 | 1 selected page | 109 | 109 | 4.621s backend elapsed |
+| Variant                                    | Models                                                                                   |           Pages |         Words | Page 7 Words | Time / Status                           |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------: | ------------: | -----------: | --------------------------------------- |
+| `current-explicit-no-orient`               | `PP-OCRv6_medium_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx`                           |              10 |           693 |           97 | 1:54.89 wall                            |
+| `explicit-orientation`                     | orientation classifiers + `PP-OCRv6_medium_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx` |              10 |           696 |           97 | 2:09.98 wall                            |
+| `auto-lang-fa-ppocrv5`                     | selected `PP-OCRv5_server_det_onnx` + `en_PP-OCRv5_mobile_rec_onnx`                      |       6 partial |           241 |            0 | stopped; wrong recognizer               |
+| `server-det-arabic-rec`                    | `PP-OCRv5_server_det_onnx` + `arabic_PP-OCRv5_mobile_rec_onnx`                           |       4 partial |           168 |            0 | stopped at 8:22.93 wall / 3328.84s user |
+| `current-explicit-no-orient-rtl-line-text` | same as current, with Arabic-script line text used for word text                         |              10 |           693 |           97 | 1:55.15 wall                            |
+| `rapidocr-arabic-ppocrv5`                  | RapidOCR PP-OCRv6 small detector + Arabic PP-OCRv5 mobile recognizer                     |          1 page | 36 text lines |          n/a | 3.45s engine elapse / 3.83s wall        |
+| `paddle-compare-page7`                     | `compare-backends` Paddle run on page 7                                                  | 1 selected page |            97 |           97 | 14.985s backend elapsed                 |
+| `rapidocr-compare-page7`                   | `compare-backends` RapidOCR run on page 7                                                | 1 selected page |           109 |          109 | 4.621s backend elapsed                  |
 
 The original broken Paddle page 7 examples were:
 
-| Line Text | Old Native Word Text | Fixed Text |
-| --- | --- | --- |
-| `ب كره زمين` | `نيمز هرك ب` | `ب كره زمين` |
-| `الفالودكى` | `ىكدولافلا` | `الفالودكى` |
-| `تنمايندگان` | `ناگدنيامنت` | `تنمايندگان` |
-| `پسازمان` | `نامزاسپ` | `پسازمان` |
-| `جتدابير` | `ريبادتج` | `جتدابير` |
+| Line Text    | Old Native Word Text | Fixed Text   |
+| ------------ | -------------------- | ------------ |
+| `ب كره زمين` | `نيمز هرك ب`         | `ب كره زمين` |
+| `الفالودكى`  | `ىكدولافلا`          | `الفالودكى`  |
+| `تنمايندگان` | `ناگدنيامنت`         | `تنمايندگان` |
+| `پسازمان`    | `نامزاسپ`            | `پسازمان`    |
+| `جتدابير`    | `ريبادتج`            | `جتدابير`    |
 
 The patched Paddle output is here:
 
@@ -114,17 +114,17 @@ The first-class RapidOCR backend output is here:
 
 RapidOCR line-level Persian examples:
 
-| Text | Score |
-| --- | ---: |
+| Text         |   Score |
+| ------------ | ------: |
 | `ب كره زمين` | 0.93664 |
-| `الفآلودى` | 0.85295 |
+| `الفآلودى`   | 0.85295 |
 | `تنمايندگان` | 0.85653 |
-| `سازمان` | 0.99521 |
-| `تدابير` | 0.85318 |
-| `ج` | 0.93159 |
-| `ث توسعه` | 0.91461 |
-| `حهمكاری` | 0.81748 |
-| `ج  طرح` | 0.79913 |
+| `سازمان`     | 0.99521 |
+| `تدابير`     | 0.85318 |
+| `ج`          | 0.93159 |
+| `ث توسعه`    | 0.91461 |
+| `حهمكاری`    | 0.81748 |
+| `ج  طرح`     | 0.79913 |
 
 ## FSI Spoken Persian A/B
 
@@ -135,7 +135,7 @@ Fixture:
 Compared pages 1-10 with:
 
 ```bash
-uv run paddle-searchable-pdf compare-backends \
+uv run searchable-pdf-ocr compare-backends \
   '/home/simon/github/pimsleur-hub/course-creation-research/persian/farsi/FSI Persian/Spoken Persian.PDF' \
   runs/fsi-persian/spoken-persian/compare-pages-1-10 \
   --language fas \
@@ -150,10 +150,10 @@ uv run paddle-searchable-pdf compare-backends \
   --preview-page 10
 ```
 
-| Backend | Pages | Lines | Words | Arabic-Script Lines | Time |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Paddle | 10 | 530 | 1501 | 1 | 163.820s |
-| RapidOCR | 10 | 534 | 1735 | 0 | 39.894s |
+| Backend  | Pages | Lines | Words | Arabic-Script Lines |     Time |
+| -------- | ----: | ----: | ----: | ------------------: | -------: |
+| Paddle   |    10 |   530 |  1501 |                   1 | 163.820s |
+| RapidOCR |    10 |   534 |  1735 |                   0 |  39.894s |
 
 The first 10 pages are mostly English front matter and introduction pages, so this is a placement/speed baseline rather than a Persian-script recognition test. Paddle's one Arabic-script line was noise from a page number: `٣ 8`.
 
@@ -168,7 +168,7 @@ Page 39 was selected from the scanned FSI PDF because it is mostly Persian scrip
 Paddle/RapidOCR command:
 
 ```bash
-uv run paddle-searchable-pdf compare-backends \
+uv run searchable-pdf-ocr compare-backends \
   '/home/simon/github/pimsleur-hub/course-creation-research/persian/farsi/FSI Persian/Spoken Persian.PDF' \
   runs/fsi-persian/spoken-persian/compare-page39 \
   --language fas \
@@ -181,10 +181,10 @@ uv run paddle-searchable-pdf compare-backends \
   --preview-page 39
 ```
 
-| Backend | Pages | Lines | Words | Arabic-Script Lines | Arabic-Script Words | Time |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Paddle | 1 | 34 | 34 | 32 | 32 | 18.106s |
-| RapidOCR | 1 | 33 | 82 | 33 | 82 | 5.551s |
+| Backend  | Pages | Lines | Words | Arabic-Script Lines | Arabic-Script Words |    Time |
+| -------- | ----: | ----: | ----: | ------------------: | ------------------: | ------: |
+| Paddle   |     1 |    34 |    34 |                  32 |                  32 | 18.106s |
+| RapidOCR |     1 |    33 |    82 |                  33 |                  82 |  5.551s |
 
 Manifest:
 
@@ -216,7 +216,7 @@ Surya wrote `results.json`, stopped its Docker container cleanly, and left the G
 Review command:
 
 ```bash
-uv run paddle-searchable-pdf review-surya \
+uv run searchable-pdf-ocr review-surya \
   '/home/simon/github/pimsleur-hub/course-creation-research/persian/farsi/FSI Persian/Spoken Persian.PDF' \
   'runs/fsi-persian/spoken-persian/surya-ocr-page39/Spoken Persian/results.json' \
   --document-key 'Spoken Persian' \
@@ -261,7 +261,7 @@ Saved parsed chunk JSON:
 
 Chunk result: `error=false`, `token_count=686`, `chunks=6`.
 
-Historical review command, run before `review-chandra` was removed from the active repo:
+Historical review command, run in commit `4fc0f99` before `review-chandra` was removed from the active repo:
 
 ```bash
 uv run paddle-searchable-pdf review-chandra \
@@ -295,7 +295,7 @@ Use `--review-bboxes --preview-page N` on `pipeline` to inspect word placement i
 Use the standalone `review-bboxes` command to inspect placement quality directly on the PDF:
 
 ```bash
-uv run paddle-searchable-pdf review-bboxes input.pdf \
+uv run searchable-pdf-ocr review-bboxes input.pdf \
   --words-jsonl runs/.../words.jsonl \
   --out runs/.../review-bboxes/output.bboxes.pdf
 ```
@@ -305,7 +305,7 @@ The output draws blue line boxes and green word boxes. Add `--labels` for text l
 Example A/B commands:
 
 ```bash
-uv run paddle-searchable-pdf compare-backends input.pdf runs/doc/compare-page7 \
+uv run searchable-pdf-ocr compare-backends input.pdf runs/doc/compare-page7 \
   --language fas \
   --ocr-version PP-OCRv5 \
   --rec-model-name arabic_PP-OCRv5_mobile_rec \
@@ -321,7 +321,7 @@ The comparison command writes one backend folder per engine, review bbox PDFs, o
 Use `review-surya` for Surya OCR/layout `results.json` files:
 
 ```bash
-uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
+uv run searchable-pdf-ocr review-surya input.pdf runs/surya/results.json \
   --out runs/surya/review-bboxes/input.surya.bboxes.pdf \
   --pages 7 \
   --labels \
@@ -333,7 +333,7 @@ That command draws orange OCR/layout boxes from Surya `blocks` or `bboxes`. It i
 For selected-page Surya runs, map Surya's local result page back to the source PDF with `--page-base` and `--page-offset`:
 
 ```bash
-uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
+uv run searchable-pdf-ocr review-surya input.pdf runs/surya/results.json \
   --document-key "Units 01-05 Listening" \
   --page-base 1 \
   --page-offset 6 \
@@ -371,7 +371,7 @@ Real Surya output:
 Review command:
 
 ```bash
-uv run paddle-searchable-pdf review-surya \
+uv run searchable-pdf-ocr review-surya \
   'runs/dli-persian/units-01-05-listening/triage-pages-1-10/input/Units 01-05 Listening.pages-1-10.pdf' \
   'runs/dli-persian/units-01-05-listening/triage-pages-1-10/surya-ocr-page7/Units 01-05 Listening/results.json' \
   --document-key 'Units 01-05 Listening' \
@@ -431,7 +431,7 @@ Saved parsed chunk JSON:
 
 Chunk result: `error=false`, `token_count=556`, `chunks=8`.
 
-Historical review command, run before `review-chandra` was removed from the active repo:
+Historical review command, run in commit `4fc0f99` before `review-chandra` was removed from the active repo:
 
 ```bash
 uv run paddle-searchable-pdf review-chandra \
@@ -453,22 +453,22 @@ Visual result: Chandra correctly grouped the page into section/text/list blocks.
 ## Next Practical Work
 
 1. Run the patched Paddle path on the first 10 pages of additional language fixtures, especially Arabic-script and Latin-script PDFs, and compare extracted text plus bbox overlays.
-2. Run more recurring A/B fixtures through both `--ocr-backend paddle` and `--ocr-backend rapidocr`.
-3. Add a first reconciliation experiment that keeps RapidOCR word boxes and substitutes content from Surya or Mistral where the sidecar clearly improves recognition.
-4. Test a GPU Paddle container only after `paddlepaddle-gpu` supports this RTX 5070 stack cleanly and `paddle.utils.run_check()` passes.
-5. Keep Chandra and dots.mocr archived unless a future local test proves reliable word-level PDF coordinates.
+1. Run more recurring A/B fixtures through both `--ocr-backend paddle` and `--ocr-backend rapidocr`.
+1. Add a first reconciliation experiment that keeps RapidOCR word boxes and substitutes content from Surya or Mistral where the sidecar clearly improves recognition.
+1. Test a GPU Paddle container only after `paddlepaddle-gpu` supports this RTX 5070 stack cleanly and `paddle.utils.run_check()` passes.
+1. Keep Chandra and dots.mocr archived unless a future local test proves reliable word-level PDF coordinates.
 
 ## Sources
 
-- PaddleOCR GitHub: https://github.com/PaddlePaddle/PaddleOCR
-- PaddleOCR pipeline output docs: http://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html
-- PP-OCRv5 multilingual docs: http://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.html
-- Arabic PP-OCRv5 recognizer model card: https://huggingface.co/PaddlePaddle/arabic_PP-OCRv5_mobile_rec
-- RapidOCR usage docs: https://rapidai.github.io/RapidOCRDocs/main/install_usage/rapidocr/usage/
-- RapidOCR model list: https://rapidai.github.io/RapidOCRDocs/main/model_list/
-- dots.ocr GitHub: https://github.com/rednote-hilab/dots.ocr
-- dots.ocr Hugging Face: https://huggingface.co/rednote-hilab/dots.ocr
-- Surya GitHub: https://github.com/datalab-to/surya
-- Chandra GitHub: https://github.com/datalab-to/chandra
-- EasyOCR GitHub: https://github.com/JaidedAI/EasyOCR
-- docTR GitHub: https://github.com/mindee/doctr
+- [PaddleOCR GitHub](https://github.com/PaddlePaddle/PaddleOCR)
+- [PaddleOCR pipeline output docs](http://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html)
+- [PP-OCRv5 multilingual docs](http://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.html)
+- [Arabic PP-OCRv5 recognizer model card](https://huggingface.co/PaddlePaddle/arabic_PP-OCRv5_mobile_rec)
+- [RapidOCR usage docs](https://rapidai.github.io/RapidOCRDocs/main/install_usage/rapidocr/usage/)
+- [RapidOCR model list](https://rapidai.github.io/RapidOCRDocs/main/model_list/)
+- [dots.ocr GitHub](https://github.com/rednote-hilab/dots.ocr)
+- [dots.ocr Hugging Face](https://huggingface.co/rednote-hilab/dots.ocr)
+- [Surya GitHub](https://github.com/datalab-to/surya)
+- [Chandra GitHub](https://github.com/datalab-to/chandra)
+- [EasyOCR GitHub](https://github.com/JaidedAI/EasyOCR)
+- [docTR GitHub](https://github.com/mindee/doctr)

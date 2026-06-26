@@ -14,16 +14,16 @@ from ocrmypdf.models.ocr_element import OcrElement
 from ocrmypdf.pluginspec import OcrEngine, OcrOptions, OrientationConfidence
 from PIL import Image
 
-from ocrmypdf_paddleocr.backends import paddle as paddle_backend
-from ocrmypdf_paddleocr.backends import rapidocr as rapidocr_backend
-from ocrmypdf_paddleocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, SUPPORTED_LANGUAGES
-from ocrmypdf_paddleocr.convert import append_jsonl, page_record_to_element
+from searchable_pdf_ocr.backends import paddle as paddle_backend
+from searchable_pdf_ocr.backends import rapidocr as rapidocr_backend
+from searchable_pdf_ocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, SUPPORTED_LANGUAGES
+from searchable_pdf_ocr.convert import append_jsonl, page_record_to_element
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.schema import PageRecord
+    from searchable_pdf_ocr.schema import PageRecord
 
 log = logging.getLogger(__name__)
-OCR_ENGINE_NAME = "paddleocr"
+OCR_ENGINE_NAME = "searchable-pdf-ocr"
 DEFAULT_OCR_BACKEND = "rapidocr"
 OCR_BACKENDS = {"paddle", "rapidocr"}
 
@@ -40,12 +40,12 @@ def _register_ocr_engine_choice(parser: Any) -> None:  # noqa: ANN401
 @hookimpl
 def add_options(parser: Any) -> None:  # noqa: ANN401
     _register_ocr_engine_choice(parser)
-    group = parser.add_argument_group("PaddleOCR", "PaddleOCR PP-OCRv6 engine options")
+    group = parser.add_argument_group("Searchable PDF OCR", "RapidOCR/PaddleOCR word-box engine options")
     group.add_argument(
         "--ocr-backend",
         choices=sorted(OCR_BACKENDS),
         default=DEFAULT_OCR_BACKEND,
-        help="Word-box OCR backend used by this OCRmyPDF plugin.",
+        help="Word-box OCR backend used by the searchable PDF pipeline.",
     )
     group.add_argument("--paddle-device", default=DEFAULT_DEVICE, help="PaddleOCR device, e.g. cpu, gpu, gpu:0.")
     group.add_argument("--paddle-ocr-version", default=DEFAULT_OCR_VERSION, help="PaddleOCR model family.")
@@ -90,7 +90,7 @@ def check_options(options: OcrOptions) -> None:
         raise MissingDependencyError(message)
 
 
-class PaddleOCREngine(OcrEngine):
+class SearchablePdfOcrEngine(OcrEngine):
     @staticmethod
     def version() -> str:
         return paddle_backend.version()
@@ -99,10 +99,12 @@ class PaddleOCREngine(OcrEngine):
     def creator_tag(options: Any) -> str:  # noqa: ANN401
         if _ocr_backend(options) == "rapidocr":
             return f"RapidOCR {rapidocr_backend.version()}"
-        return f"PaddleOCR {PaddleOCREngine.version()} ({getattr(options, 'paddle_ocr_version', DEFAULT_OCR_VERSION)})"
+        version = SearchablePdfOcrEngine.version()
+        family = getattr(options, "paddle_ocr_version", DEFAULT_OCR_VERSION)
+        return f"PaddleOCR {version} ({family})"
 
     def __str__(self) -> str:
-        return f"PaddleOCR {PaddleOCREngine.version()}"
+        return f"Searchable PDF OCR ({DEFAULT_OCR_BACKEND})"
 
     @staticmethod
     def languages(options: Any) -> set[str]:  # noqa: ANN401, ARG004
@@ -216,10 +218,10 @@ def _ocr_backend(options: Any) -> str:  # noqa: ANN401
 
 
 @hookimpl(tryfirst=True)
-def get_ocr_engine(options: Any | None = None) -> PaddleOCREngine | None:  # noqa: ANN401
+def get_ocr_engine(options: Any | None = None) -> SearchablePdfOcrEngine | None:  # noqa: ANN401
     if options is None:
-        return PaddleOCREngine()
+        return SearchablePdfOcrEngine()
     selected = getattr(options, "ocr_engine", "auto")
     if selected in ("auto", OCR_ENGINE_NAME):
-        return PaddleOCREngine()
+        return SearchablePdfOcrEngine()
     return None

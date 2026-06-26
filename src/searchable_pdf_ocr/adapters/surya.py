@@ -5,7 +5,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from ocrmypdf_paddleocr.schema import BBox, OverlayBox, OverlayPage
+from searchable_pdf_ocr.schema import BBox, OverlayBox, OverlayPage
 
 SuryaBoxSource = Literal["auto", "ocr", "layout", "detect"]
 

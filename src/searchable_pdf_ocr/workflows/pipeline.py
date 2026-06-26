@@ -9,12 +9,12 @@ from typing import Literal
 
 from dotenv import dotenv_values
 
-from ocrmypdf_paddleocr.constants import DEFAULT_RECONCILE_MODEL, DEFAULT_SUPERWHISPER_URL
-from ocrmypdf_paddleocr.mistral_sidecar import run_mistral_ocr
-from ocrmypdf_paddleocr.rebuild import rebuild_pdf
-from ocrmypdf_paddleocr.reconcile import reconcile_words
-from ocrmypdf_paddleocr.visualize import render_pdf_page_previews, visualize_bboxes
-from ocrmypdf_paddleocr.workflows.searchable import (
+from searchable_pdf_ocr.constants import DEFAULT_RECONCILE_MODEL, DEFAULT_SUPERWHISPER_URL
+from searchable_pdf_ocr.mistral_sidecar import run_mistral_ocr
+from searchable_pdf_ocr.rebuild import rebuild_pdf
+from searchable_pdf_ocr.reconcile import reconcile_words
+from searchable_pdf_ocr.visualize import render_pdf_page_previews, visualize_bboxes
+from searchable_pdf_ocr.workflows.searchable import (
     EngineName,
     OcrBackendName,
     PrecisionName,

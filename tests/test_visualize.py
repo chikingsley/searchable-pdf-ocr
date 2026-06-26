@@ -4,8 +4,8 @@ from pathlib import Path
 
 import fitz
 
-from ocrmypdf_paddleocr.schema import BBox, OverlayBox, OverlayPage
-from ocrmypdf_paddleocr.visualize import (
+from searchable_pdf_ocr.schema import BBox, OverlayBox, OverlayPage
+from searchable_pdf_ocr.visualize import (
     parse_page_spec,
     render_pdf_page_previews,
     visualize_bboxes,

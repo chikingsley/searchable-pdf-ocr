@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ocrmypdf_paddleocr.convert import has_arabic_script
-from ocrmypdf_paddleocr.rebuild import load_page_records
-from ocrmypdf_paddleocr.visualize import render_pdf_page_previews, visualize_bboxes
-from ocrmypdf_paddleocr.workflows.searchable import (
+from searchable_pdf_ocr.convert import has_arabic_script
+from searchable_pdf_ocr.rebuild import load_page_records
+from searchable_pdf_ocr.visualize import render_pdf_page_previews, visualize_bboxes
+from searchable_pdf_ocr.workflows.searchable import (
     EngineName,
     OcrBackendName,
     PrecisionName,
@@ -19,7 +19,7 @@ from ocrmypdf_paddleocr.workflows.searchable import (
 )
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.schema import PageRecord
+    from searchable_pdf_ocr.schema import PageRecord
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

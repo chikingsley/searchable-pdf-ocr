@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from ocrmypdf import OcrClass
 
-from ocrmypdf_paddleocr.convert import (
+from searchable_pdf_ocr.convert import (
     paddle_result_to_page_record,
     page_record_to_element,
     rapidocr_result_to_page_record,

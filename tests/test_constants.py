@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ocrmypdf_paddleocr.constants import LANGUAGE_MAP, SUPPORTED_LANGUAGES
+from searchable_pdf_ocr.constants import LANGUAGE_MAP, SUPPORTED_LANGUAGES
 
 
 def test_persian_aliases_map_to_paddle_fa() -> None:

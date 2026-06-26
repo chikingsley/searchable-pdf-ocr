@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 
 import fitz
 
-from ocrmypdf_paddleocr.rebuild import load_page_records, word_text
+from searchable_pdf_ocr.rebuild import load_page_records, word_text
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.schema import BBox, OverlayBox, OverlayPage, PageRecord, WordRecord
+    from searchable_pdf_ocr.schema import BBox, OverlayBox, OverlayPage, PageRecord, WordRecord
 
 RGBColor = tuple[float, float, float]
 

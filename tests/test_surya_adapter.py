@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ocrmypdf_paddleocr.adapters.surya import load_surya_overlay_pages
+from searchable_pdf_ocr.adapters.surya import load_surya_overlay_pages
 
 
 def test_load_surya_overlay_pages_reads_ocr_blocks(tmp_path: Path) -> None:

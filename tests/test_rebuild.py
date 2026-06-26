@@ -4,7 +4,7 @@ from pathlib import Path
 
 import fitz
 
-from ocrmypdf_paddleocr.rebuild import load_page_records, rebuild_pdf, sort_page_records_jsonl
+from searchable_pdf_ocr.rebuild import load_page_records, rebuild_pdf, sort_page_records_jsonl
 
 
 def test_rebuild_pdf_inserts_hidden_text(tmp_path: Path) -> None:

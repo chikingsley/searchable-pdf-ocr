@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 import paddleocr as paddleocr_module
 
-from ocrmypdf_paddleocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, LANGUAGE_MAP
-from ocrmypdf_paddleocr.convert import paddle_result_to_page_record
+from searchable_pdf_ocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, LANGUAGE_MAP
+from searchable_pdf_ocr.convert import paddle_result_to_page_record
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.schema import PageRecord
+    from searchable_pdf_ocr.schema import PageRecord
 
 log = logging.getLogger(__name__)
 

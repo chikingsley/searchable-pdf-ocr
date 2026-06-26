@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any
 from rapidocr import EngineType, LangRec, ModelType, RapidOCR
 from rapidocr.utils.typings import OCRVersion
 
-from ocrmypdf_paddleocr.convert import rapidocr_result_to_page_record
+from searchable_pdf_ocr.convert import rapidocr_result_to_page_record
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.schema import PageRecord
+    from searchable_pdf_ocr.schema import PageRecord
 
 ARABIC_SCRIPT_LANGUAGES = {"ar", "ara", "fa", "fas", "per", "urd", "ur"}
 

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ocrmypdf_paddleocr.workflows import searchable as searchable_workflow
-from ocrmypdf_paddleocr.workflows.searchable import SearchableOptions
+from searchable_pdf_ocr.workflows import searchable as searchable_workflow
+from searchable_pdf_ocr.workflows.searchable import SearchableOptions
 
 
 def test_searchable_passes_ocr_backend_to_ocrmypdf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -17,6 +17,7 @@ def test_searchable_passes_ocr_backend_to_ocrmypdf(tmp_path: Path, monkeypatch: 
     def fake_ocr(*args: object, **kwargs: object) -> int:
         assert args[0] == input_pdf
         assert args[1] == output_pdf
+        assert kwargs["ocr_engine"] == "searchable-pdf-ocr"
         assert kwargs["ocr_backend"] == "rapidocr"
         assert kwargs["paddle_debug_jsonl"] == str(words_jsonl)
         output_pdf.parent.mkdir(parents=True, exist_ok=True)

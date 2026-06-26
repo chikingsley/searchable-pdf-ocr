@@ -6,7 +6,7 @@ from pathlib import Path
 
 import fitz
 
-from ocrmypdf_paddleocr.schema import PageRecord, WordRecord
+from searchable_pdf_ocr.schema import PageRecord, WordRecord
 
 DEFAULT_FONT_CANDIDATES = (
     Path.home() / ".local/share/fonts/NotoNaskhArabic.ttf",

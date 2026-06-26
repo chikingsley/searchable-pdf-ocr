@@ -3,20 +3,20 @@ requires = ["uv_build>=0.11.24,<0.12.0"]
 build-backend = "uv_build"
 
 [project]
-name = "ocrmypdf-paddleocr"
+name = "searchable-pdf-ocr"
 version = "0.1.0"
-description = "Modern OCRmyPDF engine plugin using PaddleOCR PP-OCRv6 word boxes."
+description = "Searchable PDF creator using RapidOCR or PaddleOCR word boxes with OCRmyPDF PDF writing."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MPL-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "chikingsley", email = "cheez2012@gmail.com" },
 ]
-keywords = ["ocr", "pdf", "paddleocr", "ocrmypdf"]
+keywords = ["ocr", "pdf", "rapidocr", "paddleocr", "ocrmypdf", "searchable-pdf"]
 classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -38,19 +38,22 @@ dependencies = [
 ]
 
 [project.scripts]
-paddle-searchable-pdf = "ocrmypdf_paddleocr.cli:main"
+searchable-pdf-ocr = "searchable_pdf_ocr.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/chikingsley/ocrmypdf-paddleocr"
-Repository = "https://github.com/chikingsley/ocrmypdf-paddleocr"
-"Bug Tracker" = "https://github.com/chikingsley/ocrmypdf-paddleocr/issues"
+Homepage = "https://github.com/chikingsley/searchable-pdf-ocr"
+Repository = "https://github.com/chikingsley/searchable-pdf-ocr"
+"Bug Tracker" = "https://github.com/chikingsley/searchable-pdf-ocr/issues"
 
 [project.entry-points.ocrmypdf]
-paddleocr = "ocrmypdf_paddleocr.plugin"
+searchable_pdf_ocr = "searchable_pdf_ocr.plugin"
 
 [dependency-groups]
 dev = [
     "dslop>=0.2.2",
+    "mdformat>=1.0.0",
+    "mdformat-gfm>=1.0.0",
+    "mdformat-pyproject>=0.1.1",
     "pytest>=9.0.2",
     "ruff>=0.15.19",
     "ty>=0.0.53",
@@ -75,9 +78,15 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/ocrmypdf_paddleocr/cli.py" = ["T201"]
-"src/ocrmypdf_paddleocr/reconcile.py" = ["T201"]
+"src/searchable_pdf_ocr/cli.py" = ["T201"]
+"src/searchable_pdf_ocr/reconcile.py" = ["T201"]
 "tests/**/*.py" = ["PLR2004", "S101"]
+
+[tool.mdformat]
+wrap = "no"
+number = false
+end_of_line = "lf"
+extensions = ["gfm"]
 
 [tool.ty]
 environment.python-version = "3.12"

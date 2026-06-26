@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from ocrmypdf_paddleocr.reconcile import changed_correction_map, extract_json
-from ocrmypdf_paddleocr.schema import BBox, LineRecord, PageRecord, ReconcileResponse, WordRecord
+from searchable_pdf_ocr.reconcile import changed_correction_map, extract_json
+from searchable_pdf_ocr.schema import BBox, LineRecord, PageRecord, ReconcileResponse, WordRecord
 
 
 def test_extract_json_accepts_plain_object() -> None:

@@ -7,7 +7,7 @@ from typing import Any
 
 from ocrmypdf import BoundingBox, OcrClass, OcrElement
 
-from ocrmypdf_paddleocr.schema import BBox, LineRecord, PageRecord, WordRecord
+from searchable_pdf_ocr.schema import BBox, LineRecord, PageRecord, WordRecord
 
 Point = tuple[float, float]
 FOUR_POINTS = 4

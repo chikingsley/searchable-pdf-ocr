@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ocrmypdf_paddleocr.workflows import compare as compare_workflow
-from ocrmypdf_paddleocr.workflows.compare import CompareOptions
+from searchable_pdf_ocr.workflows import compare as compare_workflow
+from searchable_pdf_ocr.workflows.compare import CompareOptions
 
 if TYPE_CHECKING:
-    from ocrmypdf_paddleocr.workflows.searchable import SearchableOptions
+    from searchable_pdf_ocr.workflows.searchable import SearchableOptions
 
 
 def test_compare_backends_writes_manifest_and_artifact_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

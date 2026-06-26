@@ -1,22 +1,40 @@
-# OCRmyPDF PaddleOCR
+# Searchable PDF OCR
 
-Modern OCRmyPDF engine plugin for searchable PDFs using PaddleOCR PP-OCRv6 word boxes.
+Build searchable PDFs from scanned/image PDFs using local OCR word boxes plus optional content sidecars.
 
-This repo is intentionally narrow:
+This is a searchable-PDF creator built on OCRmyPDF's writer/raster pipeline. The repo adds local word-box OCR backends, review overlays, Mistral content extraction, and optional text reconciliation.
 
-- **Searchable PDF text layer:** RapidOCR ONNX word boxes by default; PaddleOCR is kept as a fallback backend.
-- **PDF writing:** OCRmyPDF 17 `generate_ocr()` / `OcrElement`; no hand-written hOCR path.
-- **Structure sidecars:** Mistral OCR Markdown for content and Surya JSON overlays for layout review.
-- **Reconciliation:** LLM corrections edit the word JSONL, then the PDF is regenerated from corrected data.
+## Active Stack
+
+- **PDF writer:** OCRmyPDF 17 `generate_ocr()` / `OcrElement` creates the hidden text layer.
+- **Default locator/recognizer:** RapidOCR ONNX provides the first-pass local OCR boxes and text.
+- **Fallback locator/recognizer:** PaddleOCR / PaddleX stays available for documents where it beats RapidOCR.
+- **Content sidecar:** Mistral OCR Markdown.
+- **Layout review sidecar:** Surya `results.json` overlays through `review-surya`.
+- **Correction pass:** Superwhisper/Sonnet reconciliation edits word JSONL while keeping box coordinates fixed.
 
 No Tesseract path is used.
 
+The project license is MPL-2.0 because this started as an MPL-licensed OCRmyPDF plugin fork. Keep `LICENSE` with source distributions and keep MPL notices intact.
+
+## Model Roles
+
+DET and REC models are different pieces of an OCR pipeline:
+
+- **DET** means text detection. It finds text regions or line boxes on the page.
+- **REC** means text recognition. It reads the cropped text image and returns characters.
+
+They are paired stages with different jobs. For example, `PP-OCRv6_medium_det_onnx` finds text areas, while `arabic_PP-OCRv5_mobile_rec_onnx` reads Arabic-script text inside those areas. A better detector can find cleaner boxes; a better recognizer can read text better inside a box. Bad output can come from either side.
+
+RapidOCR also uses detector/recognizer models internally. In this repo, “RapidOCR ONNX” means the RapidOCR runtime plus its ONNX detector/recognizer model set.
+
 ## One-Shot Searchable PDF
 
-Run the whole local-plus-API workflow into one output directory:
+Run the whole workflow into one output directory:
 
 ```bash
-uv run paddle-searchable-pdf pipeline input.pdf runs/input \
+uv run searchable-pdf-ocr pipeline input.pdf runs/input \
+  --ocr-backend rapidocr \
   --pages 1-10 \
   --device cpu
 ```
@@ -31,36 +49,23 @@ The pipeline writes:
 - `input.pipeline.json`
 - `final/input-OCR.pdf`
 
-By default it also runs Superwhisper/Sonnet reconciliation when `SUPERWHISPER_API_KEY` is present, then rebuilds:
+When `SUPERWHISPER_API_KEY` is available, the pipeline can run reconciliation and rebuild:
 
 - `reconcile/input.corrected.words.jsonl`
 - `rebuild/input.corrected.searchable.pdf`
 
-Use `--reconcile` to require reconciliation, `--no-reconcile` to skip it, and `--no-rebuild` to keep corrected JSONL without regenerating the PDF. `--env-file` is passed to Mistral and can also supply `SUPERWHISPER_API_KEY` for the pipeline.
+Use `--reconcile` to require reconciliation, `--no-reconcile` to skip it, and `--no-rebuild` to keep corrected JSONL without regenerating the PDF. `--env-file` is passed to Mistral and can also supply `SUPERWHISPER_API_KEY`.
 
-The `final` PDF copies the best generated PDF for quick review: the corrected rebuild when reconciliation runs, otherwise the first searchable PDF. Use `--final-suffix -OCR` or `--final-pdf /path/to/output-OCR.pdf` to control that review copy. Use `--font-file /path/to/NotoNaskhArabic.ttf` when rebuilding Persian or Arabic text layers.
+The `final` PDF copies the best generated PDF for quick review: the corrected rebuild when reconciliation runs, otherwise the first searchable PDF. Use `--final-suffix -OCR` or `--final-pdf /path/to/output-OCR.pdf` to control that review copy.
 
-Add `--review-bboxes --preview-page N` to render the word-level placement overlay during the same pipeline run.
+Use `--font-file /home/simon/.local/share/fonts/NotoNaskhArabic.ttf` when rebuilding Persian or Arabic text layers.
 
-Run only the searchable PDF step:
-
-```bash
-uv run paddle-searchable-pdf input.pdf output.searchable.pdf \
-  --device cpu \
-  --words-jsonl runs/input.words.jsonl
-```
-
-The command is equivalent to:
-
-```bash
-uv run paddle-searchable-pdf searchable input.pdf output.searchable.pdf
-```
-
-Useful options:
+## Important Options
 
 ```bash
 --ocr-backend rapidocr
 --ocr-backend paddle
+--device cpu
 --device gpu:0
 --language eng
 --language ara
@@ -78,57 +83,59 @@ Useful options:
 --words-jsonl runs/doc.words.jsonl
 ```
 
-For Persian/Farsi A/B runs, compare the Paddle path against RapidOCR in separate run folders:
+`--force-ocr` tells OCRmyPDF to rasterize and OCR pages even if the source PDF already has a text layer. Use it for scanned PDFs, bad existing OCR, or tests where you want the chosen backend to produce fresh boxes. Avoid it when the existing text layer is already good and you only need PDF optimization.
+
+`--skip-text` is the opposite: skip pages that already have text.
+
+## Persian/Farsi Recipe
+
+RapidOCR is the default first pass:
 
 ```bash
-uv run paddle-searchable-pdf searchable input.pdf runs/input-fa/paddle/output.searchable.pdf \
+uv run searchable-pdf-ocr pipeline input.pdf runs/input-fa \
+  --ocr-backend rapidocr \
+  --language fas \
+  --force-ocr \
+  --review-bboxes \
+  --preview-page 7
+```
+
+Use the Paddle fallback when RapidOCR placement or recognition is worse on a fixture:
+
+```bash
+uv run searchable-pdf-ocr pipeline input.pdf runs/input-fa-paddle \
   --ocr-backend paddle \
   --language fas \
   --ocr-version PP-OCRv5 \
   --rec-model-name arabic_PP-OCRv5_mobile_rec \
   --engine onnxruntime \
-  --words-jsonl runs/input-fa/paddle/words.jsonl
-
-uv run paddle-searchable-pdf searchable input.pdf runs/input-fa/rapidocr/output.searchable.pdf \
-  --ocr-backend rapidocr \
-  --language fas \
-  --words-jsonl runs/input-fa/rapidocr/words.jsonl
+  --force-ocr
 ```
 
-Review box placement directly on the PDF:
+For Paddle Arabic-script runs, the current local model pairing is:
+
+- Detector: `PP-OCRv6_medium_det_onnx`
+- Recognizer: `arabic_PP-OCRv5_mobile_rec_onnx`
+- Engine: `onnxruntime`
+- Device: `cpu`
+
+## Review Commands
+
+Render word-box placement directly on the PDF:
 
 ```bash
-uv run paddle-searchable-pdf review-bboxes input.pdf \
-  --words-jsonl runs/input-fa/paddle/words.jsonl \
-  --out runs/input-fa/review-bboxes/paddle.bboxes.pdf
-```
-
-Review Surya OCR/layout JSON boxes directly on the PDF:
-
-```bash
-uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
-  --out runs/surya/review-bboxes/input.surya.bboxes.pdf \
+uv run searchable-pdf-ocr review-bboxes input.pdf \
+  --words-jsonl runs/input-fa/rapidocr/words.jsonl \
+  --out runs/input-fa/review-bboxes/rapidocr.bboxes.pdf \
   --pages 7 \
   --labels \
   --preview-page 7
 ```
 
-When Surya was run on a selected page, its `results.json` page numbers were local to that run. Use `--page-base` and `--page-offset` to map those boxes back to the original PDF:
+Compare RapidOCR and Paddle in one folder:
 
 ```bash
-uv run paddle-searchable-pdf review-surya input.pdf runs/surya/results.json \
-  --document-key "Units 01-05 Listening" \
-  --page-base 1 \
-  --page-offset 6 \
-  --out runs/surya/review-bboxes/page-7.surya.bboxes.pdf \
-  --pages 7 \
-  --preview-page 7
-```
-
-Run both local word-box backends into one organized comparison folder:
-
-```bash
-uv run paddle-searchable-pdf compare-backends input.pdf runs/input-fa/compare-page7 \
+uv run searchable-pdf-ocr compare-backends input.pdf runs/input-fa/compare-page7 \
   --language fas \
   --ocr-version PP-OCRv5 \
   --rec-model-name arabic_PP-OCRv5_mobile_rec \
@@ -141,28 +148,47 @@ uv run paddle-searchable-pdf compare-backends input.pdf runs/input-fa/compare-pa
 
 `compare-backends` writes one backend folder per engine, review bbox PDFs, optional preview PNGs, and a `*.compare.json` manifest with page/line/word counts, Arabic-script counts, per-page stats, and elapsed time.
 
-## Structure Sidecar
+## Sidecars
 
-Mistral OCR sidecar:
+Mistral OCR creates Markdown content for review and reconciliation:
 
 ```bash
-uv run paddle-searchable-pdf mistral-ocr input.pdf \
+uv run searchable-pdf-ocr mistral-ocr input.pdf \
   --out-dir runs/sidecars
 ```
 
 `MISTRAL_API_KEY` is read from the process environment first, then from `/home/simon/github/pimsleur-hub/.env.local`. Use `--env-file` to point at a different file.
 
-The retained local structure sidecar is Surya OCR/layout/table `results.json`, reviewed with `review-surya`.
-Chandra and dots.mocr experiments are archived in [docs/ocr-wordbox-options.md](docs/ocr-wordbox-options.md); active code uses RapidOCR, Paddle, Surya review, Mistral, and OCRmyPDF.
+Surya is retained as a local layout/content review sidecar. The automatic pipeline currently uses Mistral for content sidecars; run Surya separately, then use this repo to draw its boxes on the source PDF:
 
-They are sidecars: semantic structure feeds correction and review, while exact word boxes remain the PDF text-layer contract.
+```bash
+uv run searchable-pdf-ocr review-surya input.pdf runs/surya/results.json \
+  --out runs/surya/review-bboxes/input.surya.bboxes.pdf \
+  --pages 7 \
+  --labels \
+  --preview-page 7
+```
+
+When Surya was run on a selected page, its `results.json` page numbers are local to that run. Use `--page-base` and `--page-offset` to map those boxes back to the original PDF:
+
+```bash
+uv run searchable-pdf-ocr review-surya input.pdf runs/surya/results.json \
+  --document-key "Units 01-05 Listening" \
+  --page-base 1 \
+  --page-offset 6 \
+  --out runs/surya/review-bboxes/page-7.surya.bboxes.pdf \
+  --pages 7 \
+  --preview-page 7
+```
+
+Chandra and dots.mocr experiments are archived in [docs/ocr-backend-experiments.md](docs/ocr-backend-experiments.md). Active code uses RapidOCR, Paddle, Surya review, Mistral, and OCRmyPDF.
 
 ## Reconcile
 
 Use Sonnet through the local Superwhisper API to correct OCR word text against one or more sidecars:
 
 ```bash
-SUPERWHISPER_API_KEY=... uv run paddle-searchable-pdf reconcile \
+SUPERWHISPER_API_KEY=... uv run searchable-pdf-ocr reconcile \
   --words-jsonl runs/input.words.jsonl \
   --sidecar runs/sidecars/input/input.mistral.md \
   --out runs/input.corrected.words.jsonl
@@ -173,12 +199,30 @@ The reconciler keeps `word_id` and `bbox` fixed. It only writes `corrected_text`
 ## Rebuild From Corrected Words
 
 ```bash
-uv run paddle-searchable-pdf rebuild input.pdf \
+uv run searchable-pdf-ocr rebuild input.pdf \
   --words-jsonl runs/input.corrected.words.jsonl \
   --out output.corrected.searchable.pdf
 ```
 
-Normal production should prefer the OCRmyPDF one-shot renderer. `rebuild` exists so corrected OCR data can be regenerated without running PaddleOCR again.
+Normal production should prefer the OCRmyPDF one-shot renderer. `rebuild` exists so corrected OCR data can be regenerated without running OCR again.
+
+## Architecture
+
+```text
+PDF
+  -> OCRmyPDF raster page
+  -> selected word-box backend
+       -> RapidOCR return_word_box=True
+       -> PaddleOCR predict(return_word_box=True)
+  -> PAGE/LINE/WORD OcrElement tree
+  -> OCRmyPDF searchable PDF
+  -> optional word JSONL
+  -> optional sidecar content
+       -> Mistral OCR Markdown
+       -> Surya block/layout JSON review overlays
+  -> optional LLM reconciliation
+  -> optional corrected rebuild
+```
 
 ## Runtime Notes
 
@@ -188,40 +232,6 @@ The one-shot OCRmyPDF path is validated on scanned/image PDFs. Vector-only synth
 
 Acceleration flags are exposed through the CLI, but the installed environment must provide the matching backend. Use `paddlepaddle-gpu` from a CUDA-specific PaddlePaddle index for GPU execution, and install PaddleX HPI / Paddle2ONNX / ONNX Runtime before using `--enable-hpi` or `--engine onnxruntime`.
 
-The current PP-OCRv6 50-language set covers Chinese, English, Japanese, and Latin-script languages. Use the PP-OCRv5 Arabic-family recognizer for Persian text:
-
-```bash
-uv run paddle-searchable-pdf pipeline input.pdf runs/input-fa \
-  --language fas \
-  --ocr-version PP-OCRv5 \
-  --rec-model-name arabic_PP-OCRv5_mobile_rec \
-  --engine onnxruntime
-```
-
-RapidOCR is available as a second local backend for A/B runs. For Arabic-script languages, it uses RapidOCR 3.9.0 with a PP-OCRv6 small detector and Arabic PP-OCRv5 mobile recognizer.
-
-## Architecture
-
-```text
-PDF
-  -> OCRmyPDF raster page
-  -> selected word-box backend
-       -> PaddleOCR PP-OCRv6 predict(return_word_box=True)
-       -> RapidOCR return_word_box=True
-  -> PAGE/LINE/WORD OcrElement tree
-  -> OCRmyPDF searchable PDF
-  -> optional word JSONL
-  -> optional sidecar parsers
-       -> Mistral OCR Markdown
-       -> Surya block/layout JSON review overlays
-  -> optional LLM reconciliation
-  -> optional corrected rebuild
-```
-
-## Why PP-OCRv6 Here
-
-PaddleOCR's current general OCR pipeline defaults to PP-OCRv6 medium in PaddleOCR 3.7. The docs also expose `return_word_box`, the data contract needed for a real searchable PDF text layer; PaddleOCR-VL and document parsers still help with structure, table/context review, and correction prompts, while PP-OCRv6 remains the stronger source for word-level PDF placement.
-
 ## Development
 
 ```bash
@@ -230,6 +240,7 @@ uv run ruff format .
 uv run ruff check .
 uv run ty check
 uv run pytest
-uv run vulture src
+uv run vulture src tests --min-confidence 80
 uv run dslop README.md AGENTS.md docs src
+uv run mdformat --check README.md AGENTS.md docs
 ```

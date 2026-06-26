@@ -6,9 +6,10 @@ from typing import Literal
 
 import ocrmypdf
 
-from ocrmypdf_paddleocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION
-from ocrmypdf_paddleocr.rebuild import sort_page_records_jsonl
-from ocrmypdf_paddleocr.runtime import paddle_plugin_manager
+from searchable_pdf_ocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION
+from searchable_pdf_ocr.plugin import OCR_ENGINE_NAME
+from searchable_pdf_ocr.rebuild import sort_page_records_jsonl
+from searchable_pdf_ocr.runtime import searchable_pdf_plugin_manager
 
 EngineName = Literal["paddle", "paddle_static", "paddle_dynamic", "onnxruntime"]
 PrecisionName = Literal["fp32", "fp16"]
@@ -65,8 +66,8 @@ def run_searchable_pdf(options: SearchableOptions) -> int:
         output_type=options.output_type,
         pages=options.pages,
         progress_bar=True,
-        plugin_manager=paddle_plugin_manager(),
-        ocr_engine="paddleocr",
+        plugin_manager=searchable_pdf_plugin_manager(),
+        ocr_engine=OCR_ENGINE_NAME,
         ocr_backend=options.ocr_backend,
         paddle_device=options.device,
         paddle_ocr_version=options.ocr_version,

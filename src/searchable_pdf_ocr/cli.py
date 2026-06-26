@@ -4,15 +4,15 @@ import argparse
 import sys
 from pathlib import Path
 
-from ocrmypdf_paddleocr.adapters.surya import load_surya_overlay_pages
-from ocrmypdf_paddleocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, DEFAULT_RECONCILE_MODEL
-from ocrmypdf_paddleocr.mistral_sidecar import run_mistral_ocr
-from ocrmypdf_paddleocr.rebuild import rebuild_pdf
-from ocrmypdf_paddleocr.reconcile import reconcile_words
-from ocrmypdf_paddleocr.visualize import render_pdf_page_previews, visualize_bboxes, visualize_overlay_pages
-from ocrmypdf_paddleocr.workflows.compare import CompareOptions, run_compare
-from ocrmypdf_paddleocr.workflows.pipeline import PipelineOptions, run_pipeline
-from ocrmypdf_paddleocr.workflows.searchable import SearchableOptions, run_searchable_pdf
+from searchable_pdf_ocr.adapters.surya import load_surya_overlay_pages
+from searchable_pdf_ocr.constants import DEFAULT_DEVICE, DEFAULT_OCR_VERSION, DEFAULT_RECONCILE_MODEL
+from searchable_pdf_ocr.mistral_sidecar import run_mistral_ocr
+from searchable_pdf_ocr.rebuild import rebuild_pdf
+from searchable_pdf_ocr.reconcile import reconcile_words
+from searchable_pdf_ocr.visualize import render_pdf_page_previews, visualize_bboxes, visualize_overlay_pages
+from searchable_pdf_ocr.workflows.compare import CompareOptions, run_compare
+from searchable_pdf_ocr.workflows.pipeline import PipelineOptions, run_pipeline
+from searchable_pdf_ocr.workflows.searchable import SearchableOptions, run_searchable_pdf
 
 COMMANDS = {
     "searchable",
@@ -27,7 +27,7 @@ COMMANDS = {
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="paddle-searchable-pdf")
+    parser = argparse.ArgumentParser(prog="searchable-pdf-ocr")
     subparsers = parser.add_subparsers(dest="command", required=True)
     add_searchable_command(subparsers)
     add_mistral_command(subparsers)
@@ -420,7 +420,7 @@ def run_pipeline_command(args: argparse.Namespace) -> int:
 def normalized_argv(argv: list[str] | None) -> list[str] | None:
     if argv is None:
         return None
-    if argv == [] or argv[0] in COMMANDS:
+    if argv == [] or argv[0] in COMMANDS or argv[0] in {"-h", "--help"}:
         return argv
     return ["searchable", *argv]
 
