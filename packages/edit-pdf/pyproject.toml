@@ -1,0 +1,21 @@
+[build-system]
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
+
+[project]
+name = "edit-pdf"
+version = "0.1.0"
+description = "Edit digital PDFs in their own embedded fonts (Acrobat Edit-PDF analog)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MPL-2.0"
+authors = [
+    { name = "chikingsley", email = "cheez2012@gmail.com" },
+]
+dependencies = [
+    "fonttools>=4.63.0",
+    "pymupdf>=1.27.2.3",
+]
+
+[project.scripts]
+edit-pdf = "edit_pdf.cli:main"

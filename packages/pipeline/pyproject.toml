@@ -1,0 +1,38 @@
+[build-system]
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
+
+[project]
+name = "pdf-pipeline"
+version = "0.1.0"
+description = "OCR to searchable PDF to faithful ClearScan text layer."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MPL-2.0"
+authors = [
+    { name = "chikingsley", email = "cheez2012@gmail.com" },
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "mistralai>=2.5.0",
+    "ocrmypdf>=17.7.0",
+    "onnxruntime>=1.27.0",
+    "paddleocr>=3.7.0",
+    "paddlepaddle>=3.3.1",
+    "pillow>=12.2.0",
+    "pydantic>=2.13.4",
+    "pymupdf>=1.27.2.3",
+    "python-dotenv>=1.2.2",
+    "rapidocr>=3.9.0",
+]
+
+[project.scripts]
+searchable-pdf-ocr = "pdf_pipeline.ocr.cli:main"
+clearscan-page = "pdf_pipeline.clearscan.clearscan_page:main"
+clearscan-build = "pdf_pipeline.clearscan.build_document:main"
+clearscan-toc = "pdf_pipeline.clearscan.toc_from_ocr:main"
+clearscan-letterbox = "pdf_pipeline.clearscan.letter_boxes:main"
+clearscan-verify = "pdf_pipeline.verify:main"
+
+[project.entry-points.ocrmypdf]
+pdf_pipeline_ocr = "pdf_pipeline.ocr.plugin"

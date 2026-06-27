@@ -1,52 +1,5 @@
-[build-system]
-requires = ["uv_build>=0.11.24,<0.12.0"]
-build-backend = "uv_build"
-
-[project]
-name = "searchable-pdf-ocr"
-version = "0.1.0"
-description = "Searchable PDF creator using RapidOCR or PaddleOCR word boxes with OCRmyPDF PDF writing."
-readme = "README.md"
-requires-python = ">=3.12"
-license = "MPL-2.0"
-license-files = ["LICENSE"]
-authors = [
-    { name = "chikingsley", email = "cheez2012@gmail.com" },
-]
-keywords = ["ocr", "pdf", "rapidocr", "paddleocr", "ocrmypdf", "searchable-pdf"]
-classifiers = [
-    "Intended Audience :: End Users/Desktop",
-    "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Multimedia :: Graphics :: Capture :: Scanners",
-    "Topic :: Scientific/Engineering :: Image Recognition",
-]
-dependencies = [
-    "httpx>=0.28.1",
-    "mistralai>=2.5.0",
-    "ocrmypdf>=17.7.0",
-    "onnxruntime>=1.27.0",
-    "paddleocr>=3.7.0",
-    "paddlepaddle>=3.3.1",
-    "pillow>=12.2.0",
-    "pydantic>=2.13.4",
-    "pymupdf>=1.27.2.3",
-    "python-dotenv>=1.2.2",
-    "rapidocr>=3.9.0",
-]
-
-[project.scripts]
-searchable-pdf-ocr = "searchable_pdf_ocr.cli:main"
-
-[project.urls]
-Homepage = "https://github.com/chikingsley/searchable-pdf-ocr"
-Repository = "https://github.com/chikingsley/searchable-pdf-ocr"
-"Bug Tracker" = "https://github.com/chikingsley/searchable-pdf-ocr/issues"
-
-[project.entry-points.ocrmypdf]
-searchable_pdf_ocr = "searchable_pdf_ocr.plugin"
+[tool.uv.workspace]
+members = ["packages/*"]
 
 [dependency-groups]
 dev = [
@@ -64,6 +17,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-exclude = ["experiments", "runs"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -79,9 +33,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/searchable_pdf_ocr/cli.py" = ["T201"]
-"src/searchable_pdf_ocr/reconcile.py" = ["T201"]
-"tests/**/*.py" = ["PLR2004", "S101"]
+"packages/pipeline/src/pdf_pipeline/ocr/cli.py" = ["T201"]
+"packages/pipeline/src/pdf_pipeline/ocr/reconcile.py" = ["T201"]
+"packages/*/tests/**/*.py" = ["PLR2004", "S101"]
 
 [tool.mdformat]
 wrap = "no"
@@ -92,6 +46,12 @@ extensions = ["gfm"]
 [tool.ty]
 environment.python-version = "3.12"
 
+[tool.ty.src]
+exclude = ["experiments", "runs"]
+
 [tool.vulture]
-paths = ["src"]
+paths = ["packages/pipeline/src", "packages/edit-pdf/src"]
 min_confidence = 80
+
+[tool.pytest.ini_options]
+testpaths = ["packages/pipeline/tests"]

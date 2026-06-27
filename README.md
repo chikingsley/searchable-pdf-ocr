@@ -1,8 +1,19 @@
-# Searchable PDF OCR
+# PDF Manipulation
 
-Build searchable PDFs from scanned/image PDFs using local OCR word boxes plus optional content sidecars.
+A `uv` workspace for a PDF-manipulation pipeline: OCR scanned PDFs into searchable PDFs, rebuild them as faithful ClearScan-style searchable text layers, and edit digital PDFs in their own embedded fonts.
 
-This is a searchable-PDF creator built on OCRmyPDF's writer/raster pipeline. The repo adds local word-box OCR backends, review overlays, Mistral content extraction, and optional text reconciliation.
+The OCR step (documented in detail below) is built on OCRmyPDF's writer/raster pipeline, with local word-box OCR backends, review overlays, Mistral content extraction, and optional text reconciliation.
+
+## Repository layout
+
+This repo is a `uv` workspace — a PDF-manipulation pipeline:
+
+- `packages/pipeline/` — `pdf-pipeline`: OCR → searchable PDF (`pdf_pipeline.ocr`, CLI `searchable-pdf-ocr`) and the faithful ClearScan text-layer rebuild (`pdf_pipeline.clearscan`, CLIs `clearscan-page` / `clearscan-build` / `clearscan-toc` / `clearscan-verify`). Recipes: `packages/pipeline/recipes.md`.
+- `packages/edit-pdf/` — `edit-pdf`: edit digital PDFs in their own embedded fonts (CLI `edit-pdf`).
+- `experiments/` — scratch: prototypes (the dedup-font `rebuild_page.py`, early proofs), running logs, and gitignored data (`artifacts`/`cache`/`fixtures`/`repos`/`reports`).
+- `runs/` — OCR run outputs. `docs/` — design notes.
+
+The commands below run from the repo root via the shared `uv` workspace env. The rest of this README documents the OCR (step 1) CLI.
 
 ## Active Stack
 
@@ -240,7 +251,7 @@ uv run ruff format .
 uv run ruff check .
 uv run ty check
 uv run pytest
-uv run vulture src tests --min-confidence 80
-uv run dslop README.md AGENTS.md docs src
-uv run mdformat --check README.md AGENTS.md docs
+uv run vulture packages/pipeline/src packages/edit-pdf/src --min-confidence 80
+uv run dslop README.md AGENTS.md docs packages
+uv run mdformat --check README.md AGENTS.md docs packages
 ```
